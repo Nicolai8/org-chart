@@ -173,3 +173,7 @@ export class OrgChart {
   exportSvg: () => void;
   exportImg: (opts?: { full: boolean; scale: number; onLoad: (img: string) => void; save: boolean }) => void;
 }
+
+declare module '@nicolai8/d3-org-chart' {
+
+}
