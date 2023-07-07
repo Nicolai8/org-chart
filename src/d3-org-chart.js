@@ -74,6 +74,8 @@ export class OrgChart {
       onZoomStart: (d) => {}, // Callback for zoom & panning start
       onZoom: (d) => {}, // Callback for zoom & panning
       onZoomEnd: (d) => {}, // Callback for zoom & panning end
+      enableDoubleClickZoom: false,
+      enableWheelZoom: true,
       onNodeClick: (d) => d, // Callback for node click
 
       /*
@@ -648,7 +650,13 @@ export class OrgChart {
       .attr('font-family', attrs.defaultFont);
 
     if (attrs.firstDraw) {
-      svg.call(attrs.zoomBehavior).on('dblclick.zoom', null).attr('cursor', 'move');
+      const zoom = svg.call(attrs.zoomBehavior).attr('cursor', 'move');
+      if (!attrs.enableDoubleClickZoom) {
+        zoom.on('dblclick.zoom', null);
+      }
+      if (!attrs.enableWheelZoom) {
+        zoom.on('wheel.zoom', null);
+      }
     }
 
     attrs.svg = svg;
@@ -714,6 +722,8 @@ export class OrgChart {
 
     if (attrs.firstDraw) {
       attrs.firstDraw = false;
+
+      svg.on('mousedown.drag', null);
     }
 
     return this;
@@ -1925,7 +1935,6 @@ export class OrgChart {
       .filter((d) => {
         if (!attrs.isNodeDroppable(orgChartInstance._dragData.sourceNode.subject.data, d.data)) {
           return false;
-
         }
 
         const cPInner = { x0: d.x, y0: d.y, x1: d.x + d.width, y1: d.y + d.height };

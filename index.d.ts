@@ -1,6 +1,7 @@
 export type OrgChartDataItem<TData = {}> = TData & {
   id: string;
   parentId?: string;
+  _directSubordinatesPaging?: number;
 };
 
 export type D3Node<TData> = {
@@ -9,11 +10,14 @@ export type D3Node<TData> = {
   children?: D3Node<TData>[] | null;
 };
 
+export type OrgChartLayoutType = 'top' | 'right' | 'bottom' | 'left';
+
 export type OrgChartState<TData extends OrgChartDataItem = OrgChartDataItem> = {
   // Configure svg width
   svgWidth: number;
   // Configure svg height
   svgHeight: number;
+  expandLevel: number;
   // Set parent container, either CSS style selector or DOM element
   container: HTMLDivElement | string;
   // Set data, it must be an array of objects, where hierarchy is clearly defined via id and parent ID (property names are configurable)
@@ -43,9 +47,9 @@ export type OrgChartState<TData extends OrgChartDataItem = OrgChartDataItem> = {
   // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
   compactMarginBetween: (d) => number;
   // Configure expand & collapse button width
-  nodeButtonWidth: (d) => number;
+  nodeButtonWidth: (d: D3Node<TData>) => number;
   // Configure expand & collapse button height
-  nodeButtonHeight: (d) => number;
+  nodeButtonHeight: (d: D3Node<TData>) => number;
   // Configure expand & collapse button x position
   nodeButtonX: (d) => number;
   // Configure expand & collapse button y position
@@ -64,7 +68,7 @@ export type OrgChartState<TData extends OrgChartDataItem = OrgChartDataItem> = {
   // Configure if active node should be centered when expanded and collapsed
   setActiveNodeCentered: boolean;
   // Configure layout direction , possible values are "top", "left", "right", "bottom"
-  layout: string;
+  layout: OrgChartLayoutType;
   // Configure if compact mode is enabled , when enabled, nodes are shown in compact positions, instead of horizontal spread
   compact: boolean;
   // Callback for zoom & panning start
@@ -73,6 +77,8 @@ export type OrgChartState<TData extends OrgChartDataItem = OrgChartDataItem> = {
   onZoom: (d) => void;
   // Callback for zoom & panning end
   onZoomEnd: (d) => void;
+  enableDoubleClickZoom: boolean;
+  enableWheelZoom: boolean;
   // Callback for node click
   onNodeClick: (d) => void;
   nodeContent: (d: D3Node<TData>) => string;
@@ -84,13 +90,13 @@ export type OrgChartState<TData extends OrgChartDataItem = OrgChartDataItem> = {
   isNodeDroppable: (source, target) => boolean;
 
   /* Node expand & collapse button content and styling. You can access same helper methods as above */
-  buttonContent: ({ node, state }) => string;
+  buttonContent: ({ node, state }: { node: D3Node<TData>; state: OrgChartState<TData> }) => string;
   /* Node paging button content and styling. You can access same helper methods as above. */
-  pagingButton: (d, i, arr, state) => string;
+  pagingButton: (d: D3Node<TData>, i, arr, state) => string;
   /* You can access and modify actual node DOM element in runtime using this method. */
-  nodeUpdate: (d, i, arr) => void;
+  nodeUpdate: (d: D3Node<TData>, i, arr) => void;
   /* You can access and modify actual link DOM element in runtime using this method. */
-  linkUpdate: (d, i, arr) => void;
+  linkUpdate: (d: D3Node<TData>, i, arr) => void;
   /* Horizontal diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compact-horizontal */
   hdiagonal: (s, t, m) => string;
   /* Vertical diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compacty-vertical */
@@ -114,7 +120,9 @@ export type OrgChartState<TData extends OrgChartDataItem = OrgChartDataItem> = {
   layoutBindings: LayoutBindings;
 };
 
-export type OrgChartPropertySetter<T, TData extends OrgChartDataItem = OrgChartDataItem> = (value: T) => OrgChart<TData>;
+export type OrgChartPropertySetter<T, TData extends OrgChartDataItem = OrgChartDataItem> = (
+  value: T,
+) => OrgChart<TData>;
 
 export type OrgChartConnection = {
   from: string;
@@ -166,6 +174,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   svgWidth: OrgChartPropertySetter<number, TData>;
   // Configure svg height
   svgHeight: OrgChartPropertySetter<number, TData>;
+  expandLevel: OrgChartPropertySetter<number, TData>;
   // Set parent container, either CSS style selector or DOM element
   container: OrgChartPropertySetter<HTMLDivElement | string, TData>;
   // Set data, it must be an array of objects, where hierarchy is clearly defined via id and parent ID (property names are configurable)
@@ -193,11 +202,11 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
   compactMarginPair: OrgChartPropertySetter<(d) => number, TData>;
   // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
-  compactMarginBetween: OrgChartPropertySetter<(d3Node) => number, TData>;
+  compactMarginBetween: OrgChartPropertySetter<(d) => number, TData>;
   // Configure expand & collapse button width
-  nodeButtonWidth: OrgChartPropertySetter<(d) => number, TData>;
+  nodeButtonWidth: OrgChartPropertySetter<(d: D3Node<TData>) => number, TData>;
   // Configure expand & collapse button height
-  nodeButtonHeight: OrgChartPropertySetter<(d) => number, TData>;
+  nodeButtonHeight: OrgChartPropertySetter<(d: D3Node<TData>) => number, TData>;
   // Configure expand & collapse button x position
   nodeButtonX: OrgChartPropertySetter<(d) => number, TData>;
   // Configure expand & collapse button y position
@@ -216,7 +225,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   // Configure if active node should be centered when expanded and collapsed
   setActiveNodeCentered: OrgChartPropertySetter<boolean, TData>;
   // Configure layout direction , possible values are "top", "left", "right", "bottom"
-  layout: OrgChartPropertySetter<string, TData>;
+  layout: OrgChartPropertySetter<OrgChartLayoutType, TData>;
   // Configure if compact mode is enabled , when enabled, nodes are shown in compact positions, instead of horizontal spread
   compact: OrgChartPropertySetter<boolean, TData>;
   // Callback for zoom & panning start
@@ -225,6 +234,9 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   onZoom: OrgChartPropertySetter<(d) => void, TData>;
   // Callback for zoom & panning end
   onZoomEnd: OrgChartPropertySetter<(d) => void, TData>;
+  enableDoubleClickZoom: OrgChartPropertySetter<boolean, TData>;
+  enableWheelZoom: OrgChartPropertySetter<boolean, TData>;
+
   // Callback for node click
   onNodeClick: OrgChartPropertySetter<(d) => void, TData>;
   nodeContent: OrgChartPropertySetter<(d: D3Node<TData>) => string, TData>;
@@ -237,14 +249,15 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
 
   /* Node expand & collapse button content and styling. You can access same helper methods as above */
   buttonContent: OrgChartPropertySetter<
-    ({ node, state }: { node: D3Node<TData>; state: OrgChartState<TData> }) => string, TData
+    ({ node, state }: { node: D3Node<TData>; state: OrgChartState<TData> }) => string,
+    TData
   >;
   /* Node paging button content and styling. You can access same helper methods as above. */
-  pagingButton: OrgChartPropertySetter<(d, i, arr, state: OrgChartState<TData>) => string, TData>;
+  pagingButton: OrgChartPropertySetter<(d: D3Node<TData>, i, arr, state: OrgChartState<TData>) => string, TData>;
   /* You can access and modify actual node DOM element in runtime using this method. */
-  nodeUpdate: OrgChartPropertySetter<(d, i, arr) => void, TData>;
+  nodeUpdate: OrgChartPropertySetter<(d: D3Node<TData>, i, arr) => void, TData>;
   /* You can access and modify actual link DOM element in runtime using this method. */
-  linkUpdate: OrgChartPropertySetter<(d, i, arr) => void, TData>;
+  linkUpdate: OrgChartPropertySetter<(d: D3Node<TData>, i, arr) => void, TData>;
   /* Horizontal diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compact-horizontal */
   hdiagonal: OrgChartPropertySetter<(s, t, m) => string, TData>;
   /* Vertical diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compacty-vertical */
