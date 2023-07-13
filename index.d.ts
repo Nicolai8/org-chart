@@ -10,9 +10,20 @@ export type D3Node<TData> = {
   children?: D3Node<TData>[] | null;
 };
 
+export type OrgChartZoomEvent = {
+  sourceEvent: Event;
+  target: any;
+  transform: {
+    x: number;
+    y: number;
+    k: number;
+  };
+  type: 'zoom';
+};
+
 export type OrgChartLayoutType = 'top' | 'right' | 'bottom' | 'left';
 
-export type OrgChartState<TData extends OrgChartDataItem = OrgChartDataItem> = {
+export type OrgChartState<TData extends {} = OrgChartDataItem> = {
   // Configure svg width
   svgWidth: number;
   // Configure svg height
@@ -72,11 +83,12 @@ export type OrgChartState<TData extends OrgChartDataItem = OrgChartDataItem> = {
   // Configure if compact mode is enabled , when enabled, nodes are shown in compact positions, instead of horizontal spread
   compact: boolean;
   // Callback for zoom & panning start
-  onZoomStart: (d) => void;
+  onZoomStart: (d: OrgChartZoomEvent) => void;
   // Callback for zoom & panning
-  onZoom: (d) => void;
+  onZoom: (event: OrgChartZoomEvent, d) => void;
   // Callback for zoom & panning end
-  onZoomEnd: (d) => void;
+  onZoomEnd: (d: OrgChoomartZoomEvent) => void;
+  enableZoom: boolean;
   enableDoubleClickZoom: boolean;
   enableWheelZoom: boolean;
   // Callback for node click
@@ -118,11 +130,10 @@ export type OrgChartState<TData extends OrgChartDataItem = OrgChartDataItem> = {
    *   ```
    */
   layoutBindings: LayoutBindings;
+  root?: D3Node<TData>;
 };
 
-export type OrgChartPropertySetter<T, TData extends OrgChartDataItem = OrgChartDataItem> = (
-  value: T,
-) => OrgChart<TData>;
+export type OrgChartPropertySetter<T, TData extends {} = OrgChartDataItem> = (value: T) => OrgChart<TData>;
 
 export type OrgChartConnection = {
   from: string;
@@ -169,7 +180,7 @@ export type LayoutBindings = {
   right: LayoutBinding;
 };
 
-export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
+export class OrgChart<TData extends {} = OrgChartDataItem> {
   // Configure svg width
   svgWidth: OrgChartPropertySetter<number, TData>;
   // Configure svg height
@@ -229,11 +240,12 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   // Configure if compact mode is enabled , when enabled, nodes are shown in compact positions, instead of horizontal spread
   compact: OrgChartPropertySetter<boolean, TData>;
   // Callback for zoom & panning start
-  onZoomStart: OrgChartPropertySetter<(d) => void, TData>;
+  onZoomStart: OrgChartPropertySetter<(d: OrgChartZoomEvent) => void, TData>;
   // Callback for zoom & panning
-  onZoom: OrgChartPropertySetter<(d) => void, TData>;
+  onZoom: OrgChartPropertySetter<(event: OrgChartZoomEvent, d) => void, TData>;
   // Callback for zoom & panning end
-  onZoomEnd: OrgChartPropertySetter<(d) => void, TData>;
+  onZoomEnd: OrgChartPropertySetter<(d: OrgChartZoomEvent) => void, TData>;
+  enableZoom: OrgChartPropertySetter<boolean, TData>;
   enableDoubleClickZoom: OrgChartPropertySetter<boolean, TData>;
   enableWheelZoom: OrgChartPropertySetter<boolean, TData>;
 
@@ -281,7 +293,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   layoutBindings: OrgChartPropertySetter<LayoutBindings, TData>;
 
   /* Methods*/
-
+  getChartState: () => OrgChartState<TData>;
   render: () => void;
   setExpanded: (nodeId: string, expandedFlag?: boolean) => OrgChart<TData>;
   setCentered: (nodeId: string) => OrgChart<TData>;
@@ -292,6 +304,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   removeNode: (nodeId: string) => void;
   fit: (opts?: { animate: boolean; nodes: string[]; scale: boolean }) => OrgChart<TData>;
   fullscreen: () => void;
+  zoom: (scale: number) => void;
   zoomIn: () => void;
   zoomOut: () => void;
   expandAll: () => void;
