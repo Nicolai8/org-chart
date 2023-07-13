@@ -71,9 +71,10 @@ export class OrgChart {
       setActiveNodeCentered: true, // Configure if active node should be centered when expanded and collapsed
       layout: 'top', // Configure layout direction , possible values are "top", "left", "right", "bottom"
       compact: true, // Configure if compact mode is enabled , when enabled, nodes are shown in compact positions, instead of horizontal spread
-      onZoomStart: (d) => {}, // Callback for zoom & panning start
-      onZoom: (d) => {}, // Callback for zoom & panning
-      onZoomEnd: (d) => {}, // Callback for zoom & panning end
+      onZoomStart: (d) => { }, // Callback for zoom & panning start
+      onZoom: (d) => { }, // Callback for zoom & panning
+      onZoomEnd: (d) => { }, // Callback for zoom & panning end
+      enableZoom: true,
       enableDoubleClickZoom: false,
       enableWheelZoom: true,
       onNodeClick: (d) => d, // Callback for node click
@@ -265,9 +266,8 @@ export class OrgChart {
                           L ${x} ${my}
                           L ${x} ${y}
                           L ${x} ${y + h * yrvs}
-                          C  ${x} ${y + h * yrvs + r * yrvs} ${x} ${y + h * yrvs + r * yrvs} ${x + r * xrvs} ${
-          y + h * yrvs + r * yrvs
-        }
+                          C  ${x} ${y + h * yrvs + r * yrvs} ${x} ${y + h * yrvs + r * yrvs} ${x + r * xrvs} ${y + h * yrvs + r * yrvs
+          }
                           L ${x + w * xrvs + r * xrvs} ${y + h * yrvs + r * yrvs}
                           C  ${ex}  ${y + h * yrvs + r * yrvs} ${ex}  ${y + h * yrvs + r * yrvs} ${ex} ${ey - h * yrvs}
                           L ${ex} ${ey}
@@ -278,32 +278,28 @@ export class OrgChart {
       defs: function (state, visibleConnections) {
         return `<defs>
                     ${visibleConnections
-                      .map((conn) => {
-                        const labelWidth = this.getTextWidth(conn.label, {
-                          ctx: state.ctx,
-                          fontSize: 2,
-                          defaultFont: state.defaultFont,
-                        });
-                        return `
-                       <marker id="${conn.from + '_' + conn.to}" refX="${
-                          conn._source.x < conn._target.x ? -7 : 7
-                        }" refY="5" markerWidth="500"  markerHeight="500"  orient="${
-                          conn._source.x < conn._target.x ? 'auto' : 'auto-start-reverse'
-                        }" >
+            .map((conn) => {
+              const labelWidth = this.getTextWidth(conn.label, {
+                ctx: state.ctx,
+                fontSize: 2,
+                defaultFont: state.defaultFont,
+              });
+              return `
+                       <marker id="${conn.from + '_' + conn.to}" refX="${conn._source.x < conn._target.x ? -7 : 7
+                }" refY="5" markerWidth="500"  markerHeight="500"  orient="${conn._source.x < conn._target.x ? 'auto' : 'auto-start-reverse'
+                }" >
                        <rect rx=0.5 width=${conn.label ? labelWidth + 3 : 0} height=3 y=1  fill="#E27396"></rect>
                        <text font-size="2px" x=1 fill="white" y=3>${conn.label || ''}</text>
                        </marker>
 
-                       <marker id="arrow-${
-                         conn.from + '_' + conn.to
-                       }"  markerWidth="500"  markerHeight="500"  refY="2"  refX="1" orient="${
-                          conn._source.x < conn._target.x ? 'auto' : 'auto-start-reverse'
-                        }" >
+                       <marker id="arrow-${conn.from + '_' + conn.to
+                }"  markerWidth="500"  markerHeight="500"  refY="2"  refX="1" orient="${conn._source.x < conn._target.x ? 'auto' : 'auto-start-reverse'
+                }" >
                        <path transform="translate(0)" d='M0,0 V4 L2,2 Z' fill='#E27396' />
                        </marker>
                     `;
-                      })
-                      .join('')}
+            })
+            .join('')}
                     </defs>
                     `;
       },
@@ -412,7 +408,7 @@ export class OrgChart {
           },
           zoomTransform: ({ centerX, scale }) => `translate(${centerX},0}) scale(${scale})`,
           diagonal: this.diagonal.bind(this),
-          swap: (d) => {},
+          swap: (d) => { },
           nodeUpdateTransform: ({ x, y, width, height }) => `translate(${x - width / 2},${y})`,
         },
         bottom: {
@@ -604,17 +600,19 @@ export class OrgChart {
         zoom: null,
       };
 
-      // Get zooming function
-      behaviors.zoom = d3
-        .zoom()
-        .on('start', (event, d) => attrs.onZoomStart(event, d))
-        .on('end', (event, d) => attrs.onZoomEnd(event, d))
-        .on('zoom', (event, d) => {
-          attrs.onZoom(event, d);
-          this.zoomed(event, d);
-        })
-        .scaleExtent(attrs.scaleExtent);
-      attrs.zoomBehavior = behaviors.zoom;
+      if (attrs.enableZoom) {
+        // Get zooming function
+        behaviors.zoom = d3
+          .zoom()
+          .on('start', (event, d) => attrs.onZoomStart(event, d))
+          .on('end', (event, d) => attrs.onZoomEnd(event, d))
+          .on('zoom', (event, d) => {
+            attrs.onZoom(event, d);
+            this.zoomed(event, d);
+          })
+          .scaleExtent(attrs.scaleExtent);
+        attrs.zoomBehavior = behaviors.zoom;
+      }
     }
 
     //****************** ROOT node work ************************
@@ -649,7 +647,7 @@ export class OrgChart {
       .attr('height', attrs.svgHeight)
       .attr('font-family', attrs.defaultFont);
 
-    if (attrs.firstDraw) {
+    if (attrs.firstDraw && attrs.enableZoom) {
       const zoom = svg.call(attrs.zoomBehavior).attr('cursor', 'move');
       if (!attrs.enableDoubleClickZoom) {
         zoom.on('dblclick.zoom', null);
@@ -974,13 +972,13 @@ export class OrgChart {
         const n =
           attrs.compact && d.flexCompactDim
             ? {
-                x: attrs.layoutBindings[attrs.layout].compactLinkMidX(d, attrs),
-                y: attrs.layoutBindings[attrs.layout].compactLinkMidY(d, attrs),
-              }
+              x: attrs.layoutBindings[attrs.layout].compactLinkMidX(d, attrs),
+              y: attrs.layoutBindings[attrs.layout].compactLinkMidY(d, attrs),
+            }
             : {
-                x: attrs.layoutBindings[attrs.layout].linkX(d),
-                y: attrs.layoutBindings[attrs.layout].linkY(d),
-              };
+              x: attrs.layoutBindings[attrs.layout].linkX(d),
+              y: attrs.layoutBindings[attrs.layout].linkY(d),
+            };
 
         const p = {
           x: attrs.layoutBindings[attrs.layout].linkParentX(d),
@@ -990,9 +988,9 @@ export class OrgChart {
         const m =
           attrs.compact && d.flexCompactDim
             ? {
-                x: attrs.layoutBindings[attrs.layout].linkCompactXStart(d),
-                y: attrs.layoutBindings[attrs.layout].linkCompactYStart(d),
-              }
+              x: attrs.layoutBindings[attrs.layout].linkCompactXStart(d),
+              y: attrs.layoutBindings[attrs.layout].linkCompactYStart(d),
+            }
             : n;
         return attrs.layoutBindings[attrs.layout].diagonal(n, p, m, { sy: attrs.linkYOffset });
       });
@@ -1502,7 +1500,7 @@ export class OrgChart {
       attrs.root.children.forEach((d) => this.collapse(d));
 
       // Collapse root if level is 0
-      if (attrs.expandLevel == 0) {
+      if (attrs.expandLevel === 0) {
         attrs.root._children = attrs.root.children;
         attrs.root.children = null;
       }
@@ -1688,15 +1686,30 @@ export class OrgChart {
     }
   }
 
+  // Zoom to specific scale
+  zoom(scale) {
+    const { svg, zoomBehavior, enableZoom } = this.getChartState();
+    if (!enableZoom) {
+      return;
+    }
+    svg.transition().call(zoomBehavior.scaleTo, scale < 0 || typeof scale === 'undefined' ? 1 : scale);
+  }
+
   // Zoom in exposed method
   zoomIn() {
-    const { svg, zoomBehavior } = this.getChartState();
+    const { svg, zoomBehavior, enableZoom } = this.getChartState();
+    if (!enableZoom) {
+      return;
+    }
     svg.transition().call(zoomBehavior.scaleBy, 1.3);
   }
 
   // Zoom out exposed method
   zoomOut() {
-    const { svg, zoomBehavior } = this.getChartState();
+    const { svg, zoomBehavior, enableZoom } = this.getChartState();
+    if (!enableZoom) {
+      return;
+    }
     svg.transition().call(zoomBehavior.scaleBy, 0.78);
   }
 
@@ -1789,8 +1802,8 @@ export class OrgChart {
     imageName = 'graph',
     isSvg = false,
     save = true,
-    onAlreadySerialized = (d) => {},
-    onLoad = (d) => {},
+    onAlreadySerialized = (d) => { },
+    onLoad = (d) => { },
   }) {
     // Retrieve svg node
     const svgNode = node;
