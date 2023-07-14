@@ -1,3 +1,20 @@
+export type ExportedD3Functions = {
+  selection: any;
+  select: any;
+  max: any;
+  min: any;
+  sum: any;
+  cumsum: any;
+  tree: any;
+  stratify: any;
+  zoom: any;
+  zoomIdentity: any;
+  linkHorizontal: any;
+  flextree: any;
+  drag: any;
+  selectAll: any;
+}
+
 export type OrgChartDataItem<TData = {}> = TData & {
   id: string;
   parentId?: string;
@@ -87,8 +104,7 @@ export type OrgChartState<TData extends {} = OrgChartDataItem> = {
   // Callback for zoom & panning
   onZoom: (event: OrgChartZoomEvent, d) => void;
   // Callback for zoom & panning end
-  onZoomEnd: (d: OrgChoomartZoomEvent) => void;
-  enableZoom: boolean;
+  onZoomEnd: (d: OrgChartZoomEvent) => void;
   enableDoubleClickZoom: boolean;
   enableWheelZoom: boolean;
   // Callback for node click
@@ -245,7 +261,6 @@ export class OrgChart<TData extends {} = OrgChartDataItem> {
   onZoom: OrgChartPropertySetter<(event: OrgChartZoomEvent, d) => void, TData>;
   // Callback for zoom & panning end
   onZoomEnd: OrgChartPropertySetter<(d: OrgChartZoomEvent) => void, TData>;
-  enableZoom: OrgChartPropertySetter<boolean, TData>;
   enableDoubleClickZoom: OrgChartPropertySetter<boolean, TData>;
   enableWheelZoom: OrgChartPropertySetter<boolean, TData>;
 
@@ -291,8 +306,10 @@ export class OrgChart<TData extends {} = OrgChartDataItem> {
    *   ```
    */
   layoutBindings: OrgChartPropertySetter<LayoutBindings, TData>;
+  readonly d3Instance: ExportedD3Functions;
 
   /* Methods*/
+  setParentNodeId: (node: TData, newId: string) => void;
   getChartState: () => OrgChartState<TData>;
   render: () => void;
   setExpanded: (nodeId: string, expandedFlag?: boolean) => OrgChart<TData>;
@@ -301,6 +318,7 @@ export class OrgChart<TData extends {} = OrgChartDataItem> {
   setUpToTheRootHighlighted: (nodeId: string) => OrgChart<TData>;
   clearHighlighting: () => void;
   addNode: (node: TData) => void;
+  addNodes: (nodes: TData[]) => void;
   removeNode: (nodeId: string) => void;
   fit: (opts?: { animate: boolean; nodes: string[]; scale: boolean }) => OrgChart<TData>;
   fullscreen: () => void;
@@ -313,4 +331,4 @@ export class OrgChart<TData extends {} = OrgChartDataItem> {
   exportImg: (opts?: { full: boolean; scale: number; onLoad: (img: string) => void; save: boolean }) => void;
 }
 
-declare module '@nicolai8/d3-org-chart' {}
+declare module '@nicolai8/d3-org-chart' { }
