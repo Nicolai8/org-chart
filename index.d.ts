@@ -13,7 +13,7 @@ export type ExportedD3Functions = {
   flextree: any;
   drag: any;
   selectAll: any;
-}
+};
 
 export type OrgChartDataItem<TData = {}> = TData & {
   id: string;
@@ -50,6 +50,8 @@ export type OrgChartState<TData extends {} = OrgChartDataItem> = {
   container: HTMLDivElement | string;
   // Set data, it must be an array of objects, where hierarchy is clearly defined via id and parent ID (property names are configurable)
   data: TData[] | null;
+  // Callback for data change
+  onDataChange: (data: TData[]) => void;
   // Sets connection data, array of objects, SAMPLE:  [{from:"145",to:"201",label:"Conflicts of interest"}]
   connections: OrgChartConnection[];
   // Set default font
@@ -206,6 +208,8 @@ export class OrgChart<TData extends {} = OrgChartDataItem> {
   container: OrgChartPropertySetter<HTMLDivElement | string, TData>;
   // Set data, it must be an array of objects, where hierarchy is clearly defined via id and parent ID (property names are configurable)
   data: OrgChartPropertySetter<TData[] | null, TData>;
+  // Callback for data change
+  onDataChange: OrgChartPropertySetter<(data: TData[]) => void>;
   // Sets connection data, array of objects, SAMPLE:  [{from:"145",to:"201",label:"Conflicts of interest"}]
   connections: OrgChartPropertySetter<OrgChartConnection[], TData>;
   // Set default font
@@ -310,6 +314,7 @@ export class OrgChart<TData extends {} = OrgChartDataItem> {
 
   /* Methods*/
   setParentNodeId: (node: TData, newId: string) => void;
+  getData: () => TData[] | null;
   getChartState: () => OrgChartState<TData>;
   render: () => void;
   setExpanded: (nodeId: string, expandedFlag?: boolean) => OrgChart<TData>;
@@ -331,4 +336,4 @@ export class OrgChart<TData extends {} = OrgChartDataItem> {
   exportImg: (opts?: { full: boolean; scale: number; onLoad: (img: string) => void; save: boolean }) => void;
 }
 
-declare module '@nicolai8/d3-org-chart' { }
+declare module '@nicolai8/d3-org-chart' {}

@@ -46,6 +46,7 @@ export class OrgChart {
       svgHeight: window.innerHeight - 100, // Configure svg height
       container: 'body', // Set parent container, either CSS style selector or DOM element
       data: null, // Set data, it must be an array of objects, where hierarchy is clearly defined via id and parent ID (property names are configurable)
+      onDataChange: (data) => {}, // Callback for data change
       connections: [], // Sets connection data, array of objects, SAMPLE:  [{from:"145",to:"201",label:"Conflicts of interest"}]
       defaultFont: 'Helvetica', // Set default font
       nodeId: (d) => d.nodeId || d.id, // Configure accessor for node id, default is either odeId or id
@@ -763,6 +764,8 @@ export class OrgChart {
       attrs.data.push(nodeToAdd);
     });
 
+    attrs.onDataChange(attrs.data);
+
     // Update state of nodes and redraw graph
     this.updateNodesState();
 
@@ -792,6 +795,8 @@ export class OrgChart {
 
     // Filter out retrieved nodes and reassign data
     attrs.data = attrs.data.filter((d) => !d._filtered);
+
+    attrs.onDataChange(attrs.data);
 
     const updateNodesState = this.updateNodesState.bind(this);
     // Update state of nodes and redraw graph
@@ -1997,6 +2002,8 @@ export class OrgChart {
         const sourceNodeInStore = attrs.data.find((d) => attrs.nodeId(d) === attrs.nodeId(sourceNodeData));
         attrs.setParentNodeId(sourceNodeInStore, targetNodeData.id);
 
+        attrs.onDataChange(attrs.data);
+
         orgChartInstance.updateNodesState();
       }
     }
@@ -2006,5 +2013,10 @@ export class OrgChart {
 
   get d3Instance() {
     return d3;
+  }
+
+  getData() {
+    const attrs = this.getChartState();
+    return attrs.data ? [...attrs.data] : null;
   }
 }
