@@ -129,7 +129,7 @@ export type OrgChartState<TData extends {} = OrgChartDataItem> = {
   nodeUpdate: (d: D3Node<TData>, i, arr) => void;
   /* You can access and modify actual link DOM element in runtime using this method. */
   linkUpdate: (d: D3Node<TData>, i, arr) => void;
-  compactNoChildrenUpdate: (d: D3Node<TData>, i, arr) => void;
+  compactNoChildrenUpdate: (compactGroupRect: any) => void;
   /* Horizontal diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compact-horizontal */
   hdiagonal: (s, t, m) => string;
   /* Vertical diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compacty-vertical */
@@ -294,7 +294,7 @@ export class OrgChart<TData extends {} = OrgChartDataItem> {
   nodeUpdate: OrgChartPropertySetter<(d: D3Node<TData>, i, arr) => void, TData>;
   /* You can access and modify actual link DOM element in runtime using this method. */
   linkUpdate: OrgChartPropertySetter<(d: D3Node<TData>, i, arr) => void, TData>;
-  compactNoChildrenUpdate: OrgChartPropertySetter<(d: D3Node<TData>, i, arr) => void, TData>;
+  compactNoChildrenUpdate: OrgChartPropertySetter<(compactGroupRect: any) => void, TData>;
   /* Horizontal diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compact-horizontal */
   hdiagonal: OrgChartPropertySetter<(s, t, m) => string, TData>;
   /* Vertical diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compacty-vertical */
