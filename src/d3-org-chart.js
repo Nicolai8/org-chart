@@ -74,8 +74,8 @@ export class OrgChart {
       setActiveNodeCentered: true, // Configure if active node should be centered when expanded and collapsed
       layout: 'top', // Configure layout direction , possible values are "top", "left", "right", "bottom"
       compact: true, // Configure if compact mode is enabled , when enabled, nodes are shown in compact positions, instead of horizontal spread
-      compactAsGroup: false,
-      compactAsGroupMargin: 15,
+      compactNoChildren: false,
+      compactNoChildrenMargin: 15,
       onZoomStart: (d) => {}, // Callback for zoom & panning start
       onZoom: (d) => {}, // Callback for zoom & panning
       onZoomEnd: (d) => {}, // Callback for zoom & panning end
@@ -197,7 +197,7 @@ export class OrgChart {
           d3.select(this).raise();
         }
       },
-      compactGroupUpdate: function (compactGroupRect) {
+      compactNoChildrenUpdate: function (compactGroupRect) {
         compactGroupRect.attr('fill', '#fff').attr('rx', 10).attr('stroke', '#e4e2e9').attr('stroke-width', 1);
       },
       /* Horizontal diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compact-horizontal */
@@ -902,7 +902,7 @@ export class OrgChart {
           }
         };
 
-        if (attrs.compactAsGroup) {
+        if (attrs.compactNoChildren) {
           calculateCompactAsGroupDimension();
         } else {
           calculateCompactDimension();
@@ -970,7 +970,7 @@ export class OrgChart {
           });
         };
 
-        if (attrs.compactAsGroup) {
+        if (attrs.compactNoChildren) {
           if (node.data._directSubordinates === node.data._totalSubordinates) {
             setCompactAsGroupX();
             setCompactAsGroupY();
@@ -1028,7 +1028,7 @@ export class OrgChart {
       .duration(attrs.duration)
       .attr('d', (d) => {
         const n =
-          attrs.compact && d.flexCompactDim && !attrs.compactAsGroup
+          attrs.compact && d.flexCompactDim && !attrs.compactNoChildren
             ? {
                 x: attrs.layoutBindings[attrs.layout].compactLinkMidX(d, attrs),
                 y: attrs.layoutBindings[attrs.layout].compactLinkMidY(d, attrs),
@@ -1044,7 +1044,7 @@ export class OrgChart {
         };
 
         const m =
-          attrs.compact && d.flexCompactDim && !attrs.compactAsGroup
+          attrs.compact && d.flexCompactDim && !attrs.compactNoChildren
             ? {
                 x: attrs.layoutBindings[attrs.layout].linkCompactXStart(d),
                 y: attrs.layoutBindings[attrs.layout].linkCompactYStart(d),
@@ -1177,7 +1177,7 @@ export class OrgChart {
         console.log('event fired, no handlers');
       });
 
-    // Add Node rect for compactAsGroup mode
+    // Add Node rect for compactNoChildren mode
     const nodeCompactGroup = nodeEnter.patternify({
       tag: 'g',
       selector: 'node-compact-g',
@@ -1192,7 +1192,7 @@ export class OrgChart {
       })
       .attr('pointer-events', 'none')
       .attr('width', (d) => {
-        return attrs.nodeWidth(d) + attrs.compactAsGroupMargin * 2;
+        return attrs.nodeWidth(d) + attrs.compactNoChildrenMargin * 2;
       })
       .attr('height', (d) => {
         const { data, children, firstCompact } = d;
@@ -1200,7 +1200,7 @@ export class OrgChart {
         if (
           children &&
           children.length > 1 &&
-          attrs.compactAsGroup &&
+          attrs.compactNoChildren &&
           data._directSubordinates === data._totalSubordinates
         ) {
           const compactAsGroupChildrenSize =
@@ -1208,13 +1208,13 @@ export class OrgChart {
               children,
               (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeColumn(d) + attrs.compactMarginBetween(d),
             ) - attrs.compactMarginBetween(d);
-          return compactAsGroupChildrenSize + attrs.compactAsGroupMargin * 2;
+          return compactAsGroupChildrenSize + attrs.compactNoChildrenMargin * 2;
         }
 
-        return attrs.nodeHeight(d) + attrs.compactAsGroupMargin * 2;
+        return attrs.nodeHeight(d) + attrs.compactNoChildrenMargin * 2;
       });
 
-    attrs.compactGroupUpdate(nodeCompactGroupRect);
+    attrs.compactNoChildrenUpdate(nodeCompactGroupRect);
 
     // Add Node wrapper
     const nodeWrapperGroup = nodeEnter;
@@ -1342,8 +1342,8 @@ export class OrgChart {
       .attr('transform', (d) => {
         const { height } = d;
         // todo: set to correct based on the layout
-        const x = -attrs.compactAsGroupMargin;
-        const y = height - attrs.compactAsGroupMargin + attrs.childrenMargin(d);
+        const x = -attrs.compactNoChildrenMargin;
+        const y = height - attrs.compactNoChildrenMargin + attrs.childrenMargin(d);
         return `translate(${x},${y})`;
       })
       .attr('display', (d) => {
@@ -1351,7 +1351,7 @@ export class OrgChart {
 
         return children &&
           children.length > 1 &&
-          attrs.compactAsGroup &&
+          attrs.compactNoChildren &&
           data._directSubordinates === data._totalSubordinates
           ? null
           : 'none';
@@ -1363,7 +1363,7 @@ export class OrgChart {
       if (
         children &&
         children.length > 1 &&
-        attrs.compactAsGroup &&
+        attrs.compactNoChildren &&
         data._directSubordinates === data._totalSubordinates
       ) {
         const compactAsGroupChildrenSize =
@@ -1371,10 +1371,10 @@ export class OrgChart {
             children,
             (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d) + attrs.compactMarginBetween(d),
           ) - attrs.compactMarginBetween(d);
-        return compactAsGroupChildrenSize + attrs.compactAsGroupMargin * 2;
+        return compactAsGroupChildrenSize + attrs.compactNoChildrenMargin * 2;
       }
 
-      return attrs.nodeHeight(d) + attrs.compactAsGroupMargin * 2;
+      return attrs.nodeHeight(d) + attrs.compactNoChildrenMargin * 2;
     });
 
     // Restyle node button circle
