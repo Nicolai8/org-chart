@@ -41,13 +41,13 @@
         background-color: white;
       }
 
-      .node.dragging .node-rect {
+      .node-wrapper.dragging .node-rect {
         stroke: #ff6363;
         stroke-width: 10;
         fill: #fff;
       }
 
-      .node:not(.dragging).drop-over .node-rect {
+      .node-wrapper:not(.dragging).drop-over .node-rect {
         stroke: #ccc;
         stroke-width: 10;
       }
@@ -264,6 +264,7 @@
           .nodeHeight(() => 85 + 25)
           .nodeWidth(() => 220 + 2)
           .childrenMargin(() => 50)
+          .compactAsGroup(true)
           .onNodeClick(() => console.log('ok'))
           //  .layout('right')
           .compactMarginBetween(() => 35)

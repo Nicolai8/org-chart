@@ -74,6 +74,8 @@ export class OrgChart {
       setActiveNodeCentered: true, // Configure if active node should be centered when expanded and collapsed
       layout: 'top', // Configure layout direction , possible values are "top", "left", "right", "bottom"
       compact: true, // Configure if compact mode is enabled , when enabled, nodes are shown in compact positions, instead of horizontal spread
+      compactAsGroup: false,
+      compactAsGroupMargin: 15,
       onZoomStart: (d) => {}, // Callback for zoom & panning start
       onZoom: (d) => {}, // Callback for zoom & panning
       onZoomEnd: (d) => {}, // Callback for zoom & panning end
@@ -194,6 +196,13 @@ export class OrgChart {
         if (d.data._upToTheRootHighlighted) {
           d3.select(this).raise();
         }
+      },
+      compactGroupUpdate: function (compactGroupRect) {
+        compactGroupRect
+          .attr('fill', '#fff')
+          .attr('rx', 10)
+          .attr('stroke', '#e4e2e9')
+          .attr('stroke-width', 1)
       },
       /* Horizontal diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compact-horizontal */
       hdiagonal: function (s, t, m) {
@@ -820,6 +829,7 @@ export class OrgChart {
     });
     return Object.entries(grouped);
   }
+
   calculateCompactFlexDimensions(root) {
     const attrs = this.getChartState();
     root.eachBefore((node) => {
@@ -831,45 +841,71 @@ export class OrgChart {
     root.eachBefore((node) => {
       if (node.children && node.children.length > 1) {
         const compactChildren = node.children.filter((d) => !d.children);
-
-        if (compactChildren.length < 2) return;
-        compactChildren.forEach((child, i) => {
-          if (!i) child.firstCompact = true;
-          if (i % 2) child.compactEven = false;
-          else child.compactEven = true;
-          child.row = Math.floor(i / 2);
-        });
-        const evenMaxColumnDimension = d3.max(
-          compactChildren.filter((d) => d.compactEven),
-          attrs.layoutBindings[attrs.layout].compactDimension.sizeColumn,
-        );
-        const oddMaxColumnDimension = d3.max(
-          compactChildren.filter((d) => !d.compactEven),
-          attrs.layoutBindings[attrs.layout].compactDimension.sizeColumn,
-        );
-        const columnSize = Math.max(evenMaxColumnDimension, oddMaxColumnDimension) * 2;
-        const rowsMapNew = this.groupBy(
+        const maxColumnDimension = d3.max(
           compactChildren,
-          (d) => d.row,
-          (reducedGroup) =>
-            d3.max(
-              reducedGroup,
-              (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d) + attrs.compactMarginBetween(d),
-            ),
+          attrs.layoutBindings[attrs.layout].compactDimension.sizeColumn,
         );
-        const rowSize = d3.sum(rowsMapNew.map((v) => v[1]));
-        compactChildren.forEach((node) => {
-          node.firstCompactNode = compactChildren[0];
-          if (node.firstCompact) {
-            node.flexCompactDim = [
-              columnSize + attrs.compactMarginPair(node),
-              rowSize - attrs.compactMarginBetween(node),
-            ];
-          } else {
-            node.flexCompactDim = [0, 0];
+
+        const calculateCompactDimension = () => {
+          if (compactChildren.length < 2) return;
+          compactChildren.forEach((child, i) => {
+            if (!i) {
+              child.firstCompact = true;
+            }
+            child.compactEven = !(i % 2);
+            child.row = Math.floor(i / 2);
+          });
+          const columnSize = maxColumnDimension * 2;
+          const rowsMapNew = this.groupBy(
+            compactChildren,
+            (d) => d.row,
+            (reducedGroup) =>
+              d3.max(
+                reducedGroup,
+                (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d) + attrs.compactMarginBetween(d),
+              ),
+          );
+          const rowSize = d3.sum(rowsMapNew.map((v) => v[1]));
+          compactChildren.forEach((node, i) => {
+            node.firstCompactNode = compactChildren[0];
+            if (node.firstCompact) {
+              node.flexCompactDim = [
+                columnSize + attrs.compactMarginPair(node),
+                rowSize - attrs.compactMarginBetween(node),
+              ];
+            } else {
+              node.flexCompactDim = [0, 0];
+            }
+          });
+          node.flexCompactDim = null;
+        };
+
+        const calculateCompactAsGroupDimension = () => {
+          const columnSize = maxColumnDimension;
+          const rowSize = d3.max(compactChildren, attrs.layoutBindings[attrs.layout].compactDimension.sizeRow);
+          compactChildren[0].firstCompact = true;
+
+          if (node.data._directSubordinates === node.data._totalSubordinates) {
+            node.firstCompactNode = compactChildren[0];
+
+            compactChildren.forEach((node, i) => {
+              node.firstCompactNode = compactChildren[0];
+              if (i === 0) {
+                node.flexCompactDim = [columnSize + attrs.compactMarginPair(node), rowSize];
+              } else {
+                node.flexCompactDim = [0, 0];
+              }
+            });
+
+            node.flexCompactDim = null;
           }
-        });
-        node.flexCompactDim = null;
+        };
+
+        if (attrs.compactAsGroup) {
+          calculateCompactAsGroupDimension();
+        } else {
+          calculateCompactDimension();
+        }
       }
     });
   }
@@ -881,83 +917,74 @@ export class OrgChart {
         const compactChildren = node.children.filter((d) => d.flexCompactDim);
         const fch = compactChildren[0];
         if (!fch) return;
-        compactChildren.forEach((child, i, arr) => {
-          if (i == 0) fch.x -= fch.flexCompactDim[0] / 2;
-          if (i & ((i % 2) - 1)) child.x = fch.x + fch.flexCompactDim[0] * 0.25 - attrs.compactMarginPair(child) / 4;
-          else if (i) child.x = fch.x + fch.flexCompactDim[0] * 0.75 + attrs.compactMarginPair(child) / 4;
-        });
-        const centerX = fch.x + fch.flexCompactDim[0] * 0.5;
-        fch.x = fch.x + fch.flexCompactDim[0] * 0.25 - attrs.compactMarginPair(fch) / 4;
-        const offsetX = node.x - centerX;
-        if (Math.abs(offsetX) < 10) {
-          compactChildren.forEach((d) => (d.x += offsetX));
-        }
 
-        const rowsMapNew = this.groupBy(
-          compactChildren,
-          (d) => d.row,
-          (reducedGroup) => d3.max(reducedGroup, (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d)),
-        );
-        const cumSum = d3.cumsum(rowsMapNew.map((d) => d[1] + attrs.compactMarginBetween(d)));
-        compactChildren.forEach((node, i) => {
-          if (node.row) {
-            node.y = fch.y + cumSum[node.row - 1];
-          } else {
-            node.y = fch.y;
+        const setCompactX = () => {
+          compactChildren.forEach((child, i) => {
+            if (i === 0) fch.x -= fch.flexCompactDim[0] / 2;
+            if (i && (i % 2) - 1) child.x = fch.x + fch.flexCompactDim[0] * 0.25 - attrs.compactMarginPair(child) / 4;
+            else if (i) child.x = fch.x + fch.flexCompactDim[0] * 0.75 + attrs.compactMarginPair(child) / 4;
+          });
+          const centerX = fch.x + fch.flexCompactDim[0] * 0.5;
+          fch.x = fch.x + fch.flexCompactDim[0] * 0.25 - attrs.compactMarginPair(fch) / 4;
+          const offsetX = node.x - centerX;
+          if (Math.abs(offsetX) < 10) {
+            compactChildren.forEach((d) => (d.x += offsetX));
           }
-        });
+        };
+
+        const setCompactY = () => {
+          const rowsMapNew = this.groupBy(
+            compactChildren,
+            (d) => d.row,
+            (reducedGroup) =>
+              d3.max(reducedGroup, (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d)),
+          );
+          const cumSum = d3.cumsum(rowsMapNew.map((d) => d[1] + attrs.compactMarginBetween(d)));
+          compactChildren.forEach((node, i) => {
+            if (node.row) {
+              node.y = fch.y + cumSum[node.row - 1];
+            } else {
+              node.y = fch.y;
+            }
+          });
+        };
+
+        const setCompactAsGroupX = () => {
+          const centerX = fch.x;
+          compactChildren.forEach((d) => {
+            d.x = centerX - attrs.compactMarginPair(fch) / 4;
+          });
+        };
+
+        const setCompactAsGroupY = () => {
+          const cumSum = d3.cumsum(
+            compactChildren.map(
+              (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d) + attrs.compactMarginBetween(d),
+            ),
+          );
+
+          const initialY = fch.y;
+          compactChildren.forEach((node, i) => {
+            node.y = initialY + (i === 0 ? 0 : cumSum[i - 1]);
+          });
+        };
+
+        if (attrs.compactAsGroup) {
+          if (node.data._directSubordinates === node.data._totalSubordinates) {
+            setCompactAsGroupX();
+            setCompactAsGroupY();
+          }
+        } else {
+          setCompactX();
+          setCompactY();
+        }
       }
     });
   }
 
-  // This function basically redraws visible graph, based on nodes state
-  update({ x0, y0, x = 0, y = 0, width, height }) {
+  _createAndUpdateLinks(links, { x0, y0, x = 0, y = 0, width, height }) {
     const attrs = this.getChartState();
-    const calc = attrs.calc;
 
-    // Paging
-    if (attrs.compact) {
-      this.calculateCompactFlexDimensions(attrs.root);
-    }
-
-    //  Assigns the x and y position for the nodes
-    const treeData = attrs.flexTreeLayout(attrs.root);
-
-    // Reassigns the x and y position for the based on the compact layout
-    if (attrs.compact) {
-      this.calculateCompactFlexPositions(attrs.root);
-    }
-
-    const nodes = treeData.descendants();
-
-    // console.table(nodes.map(d => ({ x: d.x, y: d.y, width: d.width, height: d.height, flexCompactDim: d.flexCompactDim + "" })))
-
-    // Get all links
-    const links = treeData.descendants().slice(1);
-    nodes.forEach(attrs.layoutBindings[attrs.layout].swap);
-
-    // Connections
-    const connections = attrs.connections;
-    const allNodesMap = {};
-    attrs.allNodes.forEach((d) => (allNodesMap[attrs.nodeId(d.data)] = d));
-
-    const visibleNodesMap = {};
-    nodes.forEach((d) => (visibleNodesMap[attrs.nodeId(d.data)] = d));
-
-    connections.forEach((connection) => {
-      const source = allNodesMap[connection.from];
-      const target = allNodesMap[connection.to];
-      connection._source = source;
-      connection._target = target;
-    });
-    const visibleConnections = connections.filter((d) => visibleNodesMap[d.from] && visibleNodesMap[d.to]);
-    const defsString = attrs.defs.bind(this)(attrs, visibleConnections);
-    const existingString = attrs.defsWrapper.html();
-    if (defsString !== existingString) {
-      attrs.defsWrapper.html(defsString);
-    }
-
-    // --------------------------  LINKS ----------------------
     // Get links selection
     const linkSelection = attrs.linksWrapper.selectAll('path.link').data(links, (d) => attrs.nodeId(d.data));
 
@@ -966,7 +993,7 @@ export class OrgChart {
       .enter()
       .insert('path', 'g')
       .attr('class', 'link')
-      .attr('d', (d) => {
+      .attr('d', () => {
         const xo = attrs.layoutBindings[attrs.layout].linkJoinX({ x: x0, y: y0, width, height });
         const yo = attrs.layoutBindings[attrs.layout].linkJoinY({ x: x0, y: y0, width, height });
         const o = { x: xo, y: yo };
@@ -1000,15 +1027,15 @@ export class OrgChart {
       .duration(attrs.duration)
       .attr('d', (d) => {
         const n =
-          attrs.compact && d.flexCompactDim
+          attrs.compact && d.flexCompactDim && !attrs.compactAsGroup
             ? {
-                x: attrs.layoutBindings[attrs.layout].compactLinkMidX(d, attrs),
-                y: attrs.layoutBindings[attrs.layout].compactLinkMidY(d, attrs),
-              }
+              x: attrs.layoutBindings[attrs.layout].compactLinkMidX(d, attrs),
+              y: attrs.layoutBindings[attrs.layout].compactLinkMidY(d, attrs),
+            }
             : {
-                x: attrs.layoutBindings[attrs.layout].linkX(d),
-                y: attrs.layoutBindings[attrs.layout].linkY(d),
-              };
+              x: attrs.layoutBindings[attrs.layout].linkX(d),
+              y: attrs.layoutBindings[attrs.layout].linkY(d),
+            };
 
         const p = {
           x: attrs.layoutBindings[attrs.layout].linkParentX(d),
@@ -1016,17 +1043,17 @@ export class OrgChart {
         };
 
         const m =
-          attrs.compact && d.flexCompactDim
+          attrs.compact && d.flexCompactDim && !attrs.compactAsGroup
             ? {
-                x: attrs.layoutBindings[attrs.layout].linkCompactXStart(d),
-                y: attrs.layoutBindings[attrs.layout].linkCompactYStart(d),
-              }
+              x: attrs.layoutBindings[attrs.layout].linkCompactXStart(d),
+              y: attrs.layoutBindings[attrs.layout].linkCompactYStart(d),
+            }
             : n;
         return attrs.layoutBindings[attrs.layout].diagonal(n, p, m, { sy: attrs.linkYOffset });
       });
 
     // Remove any  links which is exiting after animation
-    const linkExit = linkSelection
+    linkSelection
       .exit()
       .transition()
       .duration(attrs.duration)
@@ -1037,8 +1064,23 @@ export class OrgChart {
         return attrs.layoutBindings[attrs.layout].diagonal(o, o, null, { sy: attrs.linkYOffset });
       })
       .remove();
+  }
 
-    // --------------------------  CONNECTIONS ----------------------
+  _createAndUpdateConnections(connections, { x0, y0, x = 0, y = 0, width, height }) {
+    const attrs = this.getChartState();
+
+    connections.forEach((connection) => {
+      const source = allNodesMap[connection.from];
+      const target = allNodesMap[connection.to];
+      connection._source = source;
+      connection._target = target;
+    });
+    const visibleConnections = connections.filter((d) => visibleNodesMap[d.from] && visibleNodesMap[d.to]);
+    const defsString = attrs.defs.bind(this)(attrs, visibleConnections);
+    const existingString = attrs.defsWrapper.html();
+    if (defsString !== existingString) {
+      attrs.defsWrapper.html(defsString);
+    }
 
     const connectionsSel = attrs.connectionsWrapper.selectAll('path.connection').data(visibleConnections);
 
@@ -1096,15 +1138,18 @@ export class OrgChart {
     connUpdate.each(attrs.connectionsUpdate);
 
     // Remove any  links which is exiting after animation
-    const connExit = connectionsSel
+    connectionsSel
       .exit()
       .attr('opacity', 1)
       .transition()
       .duration(attrs.duration)
       .attr('opacity', 0)
       .remove();
+  }
 
-    // --------------------------  NODES ----------------------
+  _createAndUpdateNodes(nodes, { x0, y0, x = 0, y = 0, width, height }) {
+    const attrs = this.getChartState();
+
     // Get nodes selection
     const nodesSelection = attrs.nodesWrapper.selectAll('g.node').data(nodes, ({ data }) => attrs.nodeId(data));
 
@@ -1137,18 +1182,61 @@ export class OrgChart {
         console.log('event fired, no handlers');
       });
 
+    // Add Node rect for compactAsGroup mode
+    const nodeCompactGroup = nodeEnter.patternify({
+      tag: 'g',
+      selector: 'node-compact-g',
+      data: (d) => [d],
+    });
+
+    const nodeCompactGroupRect = nodeCompactGroup
+      .patternify({
+        tag: 'rect',
+        selector: 'node-compact-rect',
+        data: (d) => [d],
+      })
+      .attr('pointer-events', 'none')
+      .attr('width', (d) => {
+        return attrs.nodeWidth(d) + attrs.compactAsGroupMargin * 2;
+      })
+      .attr('height', (d) => {
+        const { data, children, firstCompact } = d;
+
+        if (
+          children &&
+          children.length > 1 &&
+          attrs.compactAsGroup &&
+          data._directSubordinates === data._totalSubordinates
+        ) {
+          const compactAsGroupChildrenSize =
+            d3.sum(
+              children,
+              (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeColumn(d) + attrs.compactMarginBetween(d),
+            ) - attrs.compactMarginBetween(d);
+          return compactAsGroupChildrenSize + attrs.compactAsGroupMargin * 2;
+        }
+
+        return attrs.nodeHeight(d) + attrs.compactAsGroupMargin * 2;
+      });
+
+    attrs.compactGroupUpdate(nodeCompactGroupRect);
+
+    // Add Node wrapper
+    const nodeWrapperGroup = nodeEnter.patternify({
+      tag: 'g',
+      selector: 'node-wrapper',
+      data: (d) => [d],
+    });
+
     // Add background rectangle for the nodes
-    nodeEnter.patternify({
+    nodeWrapperGroup.patternify({
       tag: 'rect',
       selector: 'node-rect',
       data: (d) => [d],
     });
 
-    // Node update styles
-    const nodeUpdate = nodeEnter.merge(nodesSelection).style('font', '12px sans-serif');
-
     // Add foreignObject element inside rectangle
-    const fo = nodeUpdate
+    const fo = nodeWrapperGroup
       .patternify({
         tag: 'foreignObject',
         selector: 'node-foreign-object',
@@ -1166,7 +1254,7 @@ export class OrgChart {
     this.restyleForeignObjectElements();
 
     // Add Node button circle's group (expand-collapse button)
-    const nodeButtonGroups = nodeEnter
+    const nodeButtonGroups = nodeWrapperGroup
       .patternify({
         tag: 'g',
         selector: 'node-button-g',
@@ -1188,7 +1276,7 @@ export class OrgChart {
       .attr('y', (d) => attrs.nodeButtonY(d));
 
     // Add expand collapse button content
-    const nodeFo = nodeButtonGroups
+    nodeButtonGroups
       .patternify({
         tag: 'foreignObject',
         selector: 'node-button-foreign-object',
@@ -1208,6 +1296,9 @@ export class OrgChart {
       .style('display', 'flex')
       .style('width', '100%')
       .style('height', '100%');
+
+    // Node update styles
+    const nodeUpdate = nodeEnter.merge(nodesSelection).style('font', '12px sans-serif');
 
     // Transition to the proper position for the node
     nodeUpdate
@@ -1250,6 +1341,46 @@ export class OrgChart {
         return 0;
       });
 
+    nodeUpdate
+      .select('.node-compact-g')
+      .attr('transform', (d) => {
+        const { height } = d;
+        // todo: set to correct based on the layout
+        const x = -attrs.compactAsGroupMargin;
+        const y = height - attrs.compactAsGroupMargin + attrs.childrenMargin(d);
+        return `translate(${x},${y})`;
+      })
+      .attr('display', (d) => {
+        const { children, data, firstCompact } = d;
+
+        return children &&
+        children.length > 1 &&
+        attrs.compactAsGroup &&
+        data._directSubordinates === data._totalSubordinates
+          ? null
+          : 'none';
+      });
+
+    nodeUpdate.select('.node-compact-rect').attr('height', (d) => {
+      const { children, data, firstCompact } = d;
+
+      if (
+        children &&
+        children.length > 1 &&
+        attrs.compactAsGroup &&
+        data._directSubordinates === data._totalSubordinates
+      ) {
+        const compactAsGroupChildrenSize =
+          d3.sum(
+            children,
+            (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d) + attrs.compactMarginBetween(d),
+          ) - attrs.compactMarginBetween(d);
+        return compactAsGroupChildrenSize + attrs.compactAsGroupMargin * 2;
+      }
+
+      return attrs.nodeHeight(d) + attrs.compactAsGroupMargin * 2;
+    });
+
     // Restyle node button circle
     nodeUpdate.select('.node-button-foreign-object .node-button-div').html((node) => {
       return attrs.buttonContent({ node, state: attrs });
@@ -1273,7 +1404,7 @@ export class OrgChart {
     nodeUpdate.each(attrs.nodeUpdate);
 
     // Remove any exiting nodes after transition
-    const nodeExitTransition = nodesSelection
+    nodesSelection
       .exit()
       .attr('opacity', 1)
       .transition()
@@ -1287,6 +1418,47 @@ export class OrgChart {
         d3.select(this).remove();
       })
       .attr('opacity', 0);
+  }
+
+  // This function basically redraws visible graph, based on nodes state
+  update(d3) {
+    const attrs = this.getChartState();
+
+    // Paging
+    if (attrs.compact) {
+      this.calculateCompactFlexDimensions(attrs.root);
+    }
+
+    //  Assigns the x and y position for the nodes
+    const treeData = attrs.flexTreeLayout(attrs.root);
+
+    // Reassigns the x and y position for the based on the compact layout
+    if (attrs.compact) {
+      this.calculateCompactFlexPositions(attrs.root);
+    }
+
+    const nodes = treeData.descendants();
+
+    // console.table(nodes.map(d => ({ x: d.x, y: d.y, width: d.width, height: d.height, flexCompactDim: d.flexCompactDim + "" })))
+
+    // Get all links
+    const links = treeData.descendants().slice(1);
+    nodes.forEach(attrs.layoutBindings[attrs.layout].swap);
+
+    // Connections
+    const connections = attrs.connections;
+    const allNodesMap = {};
+    attrs.allNodes.forEach((d) => (allNodesMap[attrs.nodeId(d.data)] = d));
+
+    const visibleNodesMap = {};
+    nodes.forEach((d) => (visibleNodesMap[attrs.nodeId(d.data)] = d));
+
+    // --------------------------  LINKS ----------------------
+    this._createAndUpdateLinks(links, d3);
+    // --------------------------  CONNECTIONS ----------------------
+    this._createAndUpdateConnections(connections, d3);
+    // --------------------------  NODES ----------------------
+    this._createAndUpdateNodes(nodes, d3);
 
     // Store the old positions for transition.
     nodes.forEach((d) => {
@@ -1924,7 +2096,7 @@ export class OrgChart {
 
     const self = this;
     attrs.svg
-      .selectAll('.node')
+      .selectAll('.node-wrapper')
       .filter((d) => !!attrs.parentNodeId(d.data) && attrs.isNodeDraggable(d.data))
       .call(
         d3
@@ -1952,19 +2124,21 @@ export class OrgChart {
     };
   }
 
-  dragged(draggingEl, d, event) {
+  dragged(draggingEl, event, d) {
     const orgChartInstance = this;
     const attrs = orgChartInstance.getChartState();
 
-    const x = d.x - event.width / 2;
+    const x = event.x - d.width / 2;
+    const dx = event.x - d.x0;
+    const dy = event.y - d.y0;
 
-    d3.select(draggingEl).raise().attr('transform', `translate(${x},${d.y})`);
+    d3.select(draggingEl).raise().attr('transform', `translate(${dx},${dy})`);
     orgChartInstance._dragData.targetNode = null;
 
     // check nodes overlapping
-    const cP = { x0: d.x, y0: d.y, x1: d.x + event.width, y1: d.y + event.height };
+    const cP = { x0: event.x, y0: event.y, x1: event.x + d.width, y1: event.y + d.height };
 
-    d3.selectAll('g.node:not(.dragging)')
+    d3.selectAll('g.node-wrapper:not(.dragging)')
       .classed('drop-over', false)
       .filter((d) => {
         if (!attrs.isNodeDroppable(orgChartInstance._dragData.sourceNode.subject.data, d.data)) {
@@ -1984,12 +2158,13 @@ export class OrgChart {
     const orgChartInstance = this;
     const attrs = orgChartInstance.getChartState();
 
-    d3.select(draggingEl).classed('dragging', false);
-    d3.selectAll('g.node:not(.dragging)').classed('drop-over', false);
+    d3.select(draggingEl).classed('dragging', false)
+    d3.selectAll('g.node-wrapper:not(.dragging)').classed('drop-over', false);
 
     const x = d.subject.x - d.subject.width / 2;
 
-    d3.select(draggingEl).attr('transform', `translate(${x},${d.subject.y})`);
+    //d3.select(draggingEl).node().closest('.node').setA('transform', `translate(${x},${d.subject.y})`);
+    d3.select(draggingEl).attr('transform', '');
 
     const { sourceNode, targetNode } = orgChartInstance._dragData;
     if (sourceNode && targetNode) {
