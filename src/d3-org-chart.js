@@ -198,11 +198,7 @@ export class OrgChart {
         }
       },
       compactGroupUpdate: function (compactGroupRect) {
-        compactGroupRect
-          .attr('fill', '#fff')
-          .attr('rx', 10)
-          .attr('stroke', '#e4e2e9')
-          .attr('stroke-width', 1)
+        compactGroupRect.attr('fill', '#fff').attr('rx', 10).attr('stroke', '#e4e2e9').attr('stroke-width', 1);
       },
       /* Horizontal diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compact-horizontal */
       hdiagonal: function (s, t, m) {
@@ -700,6 +696,11 @@ export class OrgChart {
       selector: 'connections-wrapper',
     });
 
+    attrs.draggedNodesWrapper = attrs.centerG.patternify({
+      tag: 'g',
+      selector: 'dragged-nodes-wrapper',
+    });
+
     attrs.defsWrapper = svg.patternify({
       tag: 'g',
       selector: 'defs-wrapper',
@@ -1029,13 +1030,13 @@ export class OrgChart {
         const n =
           attrs.compact && d.flexCompactDim && !attrs.compactAsGroup
             ? {
-              x: attrs.layoutBindings[attrs.layout].compactLinkMidX(d, attrs),
-              y: attrs.layoutBindings[attrs.layout].compactLinkMidY(d, attrs),
-            }
+                x: attrs.layoutBindings[attrs.layout].compactLinkMidX(d, attrs),
+                y: attrs.layoutBindings[attrs.layout].compactLinkMidY(d, attrs),
+              }
             : {
-              x: attrs.layoutBindings[attrs.layout].linkX(d),
-              y: attrs.layoutBindings[attrs.layout].linkY(d),
-            };
+                x: attrs.layoutBindings[attrs.layout].linkX(d),
+                y: attrs.layoutBindings[attrs.layout].linkY(d),
+              };
 
         const p = {
           x: attrs.layoutBindings[attrs.layout].linkParentX(d),
@@ -1045,9 +1046,9 @@ export class OrgChart {
         const m =
           attrs.compact && d.flexCompactDim && !attrs.compactAsGroup
             ? {
-              x: attrs.layoutBindings[attrs.layout].linkCompactXStart(d),
-              y: attrs.layoutBindings[attrs.layout].linkCompactYStart(d),
-            }
+                x: attrs.layoutBindings[attrs.layout].linkCompactXStart(d),
+                y: attrs.layoutBindings[attrs.layout].linkCompactYStart(d),
+              }
             : n;
         return attrs.layoutBindings[attrs.layout].diagonal(n, p, m, { sy: attrs.linkYOffset });
       });
@@ -1138,13 +1139,7 @@ export class OrgChart {
     connUpdate.each(attrs.connectionsUpdate);
 
     // Remove any  links which is exiting after animation
-    connectionsSel
-      .exit()
-      .attr('opacity', 1)
-      .transition()
-      .duration(attrs.duration)
-      .attr('opacity', 0)
-      .remove();
+    connectionsSel.exit().attr('opacity', 1).transition().duration(attrs.duration).attr('opacity', 0).remove();
   }
 
   _createAndUpdateNodes(nodes, { x0, y0, x = 0, y = 0, width, height }) {
@@ -1223,7 +1218,7 @@ export class OrgChart {
 
     // Add Node wrapper
     const nodeWrapperGroup = nodeEnter;
-/*    const nodeWrapperGroup = nodeEnter.patternify({
+    /*    const nodeWrapperGroup = nodeEnter.patternify({
       tag: 'g',
       selector: 'node-wrapper',
       data: (d) => [d],
@@ -1355,9 +1350,9 @@ export class OrgChart {
         const { children, data, firstCompact } = d;
 
         return children &&
-        children.length > 1 &&
-        attrs.compactAsGroup &&
-        data._directSubordinates === data._totalSubordinates
+          children.length > 1 &&
+          attrs.compactAsGroup &&
+          data._directSubordinates === data._totalSubordinates
           ? null
           : 'none';
       });
@@ -2102,25 +2097,35 @@ export class OrgChart {
       .call(
         d3
           .drag()
-          .on('start', function (d, e) {
-            self.dragStarted(this, d, e);
+          .clickDistance(100)
+          .filter((e) => !e.target.closest('.node-button-g'))
+          .on('start', function (e, d) {
+            self.dragStarted(this, e, d);
           })
-          .on('drag', function (d, e) {
-            self.dragged(this, d, e);
+          .on('drag', function (e, d) {
+            self.dragged(this, e, d);
           })
-          .on('end', function (d, e) {
-            self.dragEnded(this, d, e);
+          .on('end', function (e, d) {
+            self.dragEnded(this, e, d);
           }),
       );
   }
 
-  dragStarted(draggingEl, d) {
+  dragStarted(draggingEl, event) {
     const orgChartInstance = this;
 
-    d.sourceEvent.stopPropagation();
-    d3.select(draggingEl).classed('dragging', true);
+    event.sourceEvent.stopPropagation();
+
+    const attrs = orgChartInstance.getChartState();
+
+    const draggingNode = d3.select(draggingEl).classed('dragging', true);
+    const draggingElClone = draggingNode.clone(true);
+    draggingElClone.select('.node-compact-g').node().remove();
+    attrs.draggedNodesWrapper.node().appendChild(draggingElClone.node());
+    draggingNode.selectAll('.node-foreign-object, .node-button-g, .node-rect').attr('opacity', 0);
     orgChartInstance._dragData = {
-      sourceNode: d,
+      draggingElClone: draggingElClone,
+      sourceNode: event,
       targetNode: null,
     };
   }
@@ -2131,7 +2136,7 @@ export class OrgChart {
 
     const x = event.x - d.width / 2;
 
-    d3.select(draggingEl).raise().attr('transform', `translate(${x},${event.y})`);
+    orgChartInstance._dragData.draggingElClone.attr('transform', `translate(${x},${event.y})`);
     orgChartInstance._dragData.targetNode = null;
 
     // check nodes overlapping
@@ -2153,19 +2158,23 @@ export class OrgChart {
       .classed('drop-over', true);
   }
 
-  dragEnded(draggingEl, d) {
+  dragEnded(draggingEl, event) {
     const orgChartInstance = this;
     const attrs = orgChartInstance.getChartState();
-
-    d3.select(draggingEl).classed('dragging', false)
     d3.selectAll('g.node:not(.dragging)').classed('drop-over', false);
 
-    const x = d.subject.x - d.subject.width / 2;
+    const draggingNode = d3.select(draggingEl).classed('dragging', false);
+    draggingNode.selectAll('.node-foreign-object, .node-button-g, .node-rect').attr('opacity', 1);
 
-    d3.select(draggingEl).attr('transform', `translate(${x},${d.subject.y})`);
-    //d3.select(draggingEl).attr('transform', '');
+    const x = event.subject.x - event.subject.width / 2;
+    draggingNode.attr('transform', `translate(${x},${event.subject.y})`);
 
     const { sourceNode, targetNode } = orgChartInstance._dragData;
+    // clear current state
+    orgChartInstance._dragData.draggingElClone.remove();
+    orgChartInstance._dragData = {};
+
+    // process updates
     if (sourceNode && targetNode) {
       const sourceNodeData = sourceNode.subject.data;
       const targetNodeData = targetNode.data;
@@ -2181,8 +2190,6 @@ export class OrgChart {
         orgChartInstance.updateNodesState();
       }
     }
-    // clear current state
-    orgChartInstance._dragData = {};
   }
 
   get d3Instance() {
