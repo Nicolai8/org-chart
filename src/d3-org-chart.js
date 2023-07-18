@@ -2145,13 +2145,25 @@ export class OrgChart {
     d3.selectAll('g.node:not(.dragging)')
       .classed('drop-over', false)
       .filter((d) => {
-        if (!attrs.isNodeDroppable(orgChartInstance._dragData.sourceNode.subject.data, d.data)) {
+        const sourceNode = orgChartInstance._dragData.sourceNode.subject;
+        const targetNode = d;
+
+        // avoid dropping parent into child nodes
+        let parentNode = targetNode.parent;
+        while (parentNode) {
+          if (targetNode.parent.id === sourceNode.id) {
+            return false;
+          }
+          parentNode = parentNode.parent;
+        }
+
+        if (!attrs.isNodeDroppable(sourceNode.data, targetNode.data)) {
           return false;
         }
 
         const cPInner = { x0: d.x, y0: d.y, x1: d.x + d.width, y1: d.y + d.height };
         if (cP.x1 > cPInner.x0 && cP.x0 < cPInner.x1 && cP.y1 > cPInner.y0 && cP.y0 < cPInner.y1) {
-          orgChartInstance._dragData.targetNode = d;
+          orgChartInstance._dragData.targetNode = targetNode;
           return d;
         }
       })
@@ -2161,7 +2173,8 @@ export class OrgChart {
   dragEnded(draggingEl, event) {
     const orgChartInstance = this;
     const attrs = orgChartInstance.getChartState();
-    d3.selectAll('g.node:not(.dragging)').classed('drop-over', false);
+    const targetD3Node = d3.selectAll('g.node.drop-over');
+    targetD3Node.classed('drop-over', false);
 
     const draggingNode = d3.select(draggingEl).classed('dragging', false);
     draggingNode.selectAll('.node-foreign-object, .node-button-g, .node-rect').attr('opacity', 1);
@@ -2186,6 +2199,8 @@ export class OrgChart {
         attrs.setParentNodeId(sourceNodeInStore, targetNodeData.id);
 
         attrs.onDataChange(attrs.data);
+
+        attrs.nodesWrapper.node().insertBefore(draggingEl, targetD3Node.node().nextSibling);
 
         orgChartInstance.updateNodesState();
       }

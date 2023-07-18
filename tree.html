@@ -197,8 +197,8 @@
       d3.csv('misc/data.csv').then((dataFlattened) => {
         chart = new d3.OrgChart()
           .container('.chart-container')
-          .pagingStep(() => 5)
-          .minPagingVisibleNodes(() => 3)
+          //.pagingStep(() => 5)
+          //.minPagingVisibleNodes(() => 3)
           .data(dataFlattened)
           // .scaleExtent([1,1])
           // .svgHeight(window.innerHeight)
