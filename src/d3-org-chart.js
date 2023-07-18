@@ -842,13 +842,15 @@ export class OrgChart {
     root.eachBefore((node) => {
       if (node.children && node.children.length > 1) {
         const compactChildren = node.children.filter((d) => !d.children);
+
+        if (compactChildren.length < 2) return;
+
         const maxColumnDimension = d3.max(
           compactChildren,
           attrs.layoutBindings[attrs.layout].compactDimension.sizeColumn,
         );
 
         const calculateCompactDimension = () => {
-          if (compactChildren.length < 2) return;
           compactChildren.forEach((child, i) => {
             if (!i) {
               child.firstCompact = true;
@@ -892,7 +894,7 @@ export class OrgChart {
             compactChildren.forEach((node, i) => {
               node.firstCompactNode = compactChildren[0];
               if (i === 0) {
-                node.flexCompactDim = [columnSize + attrs.compactMarginPair(node), rowSize];
+                node.flexCompactDim = [columnSize, rowSize];
               } else {
                 node.flexCompactDim = [0, 0];
               }
@@ -953,7 +955,7 @@ export class OrgChart {
         const setCompactAsGroupX = () => {
           const centerX = fch.x;
           compactChildren.forEach((d) => {
-            d.x = centerX - attrs.compactMarginPair(fch) / 4;
+            d.x = centerX;
           });
         };
 

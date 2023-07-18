@@ -1,6 +1,6 @@
 {
   "name": "@nicolai8/d3-org-chart",
-  "version": "3.0.1-next.15",
+  "version": "3.0.1-next.17",
   "module": "index",
   "type": "module",
   "description": "Highly customizable org chart, created with d3",
