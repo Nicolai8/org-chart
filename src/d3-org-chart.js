@@ -1222,11 +1222,12 @@ export class OrgChart {
     attrs.compactGroupUpdate(nodeCompactGroupRect);
 
     // Add Node wrapper
-    const nodeWrapperGroup = nodeEnter.patternify({
+    const nodeWrapperGroup = nodeEnter;
+/*    const nodeWrapperGroup = nodeEnter.patternify({
       tag: 'g',
       selector: 'node-wrapper',
       data: (d) => [d],
-    });
+    });*/
 
     // Add background rectangle for the nodes
     nodeWrapperGroup.patternify({
@@ -2096,7 +2097,7 @@ export class OrgChart {
 
     const self = this;
     attrs.svg
-      .selectAll('.node-wrapper')
+      .selectAll('.node')
       .filter((d) => !!attrs.parentNodeId(d.data) && attrs.isNodeDraggable(d.data))
       .call(
         d3
@@ -2129,16 +2130,14 @@ export class OrgChart {
     const attrs = orgChartInstance.getChartState();
 
     const x = event.x - d.width / 2;
-    const dx = event.x - d.x0;
-    const dy = event.y - d.y0;
 
-    d3.select(draggingEl).raise().attr('transform', `translate(${dx},${dy})`);
+    d3.select(draggingEl).raise().attr('transform', `translate(${x},${event.y})`);
     orgChartInstance._dragData.targetNode = null;
 
     // check nodes overlapping
     const cP = { x0: event.x, y0: event.y, x1: event.x + d.width, y1: event.y + d.height };
 
-    d3.selectAll('g.node-wrapper:not(.dragging)')
+    d3.selectAll('g.node:not(.dragging)')
       .classed('drop-over', false)
       .filter((d) => {
         if (!attrs.isNodeDroppable(orgChartInstance._dragData.sourceNode.subject.data, d.data)) {
@@ -2159,12 +2158,12 @@ export class OrgChart {
     const attrs = orgChartInstance.getChartState();
 
     d3.select(draggingEl).classed('dragging', false)
-    d3.selectAll('g.node-wrapper:not(.dragging)').classed('drop-over', false);
+    d3.selectAll('g.node:not(.dragging)').classed('drop-over', false);
 
     const x = d.subject.x - d.subject.width / 2;
 
-    //d3.select(draggingEl).node().closest('.node').setA('transform', `translate(${x},${d.subject.y})`);
-    d3.select(draggingEl).attr('transform', '');
+    d3.select(draggingEl).attr('transform', `translate(${x},${d.subject.y})`);
+    //d3.select(draggingEl).attr('transform', '');
 
     const { sourceNode, targetNode } = orgChartInstance._dragData;
     if (sourceNode && targetNode) {
