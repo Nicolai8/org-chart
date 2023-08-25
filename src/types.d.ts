@@ -1,8 +1,8 @@
-import type { BaseType, Selection } from 'd3-selection';
-import type { D3ZoomEvent, ZoomedElementBaseType } from 'd3-zoom';
-import type { HierarchyNode } from 'd3-hierarchy';
-import type { FlextreeNode } from 'd3-flextree';
-import type { Link } from 'd3-shape';
+import { BaseType, Selection } from 'd3-selection';
+import { D3ZoomEvent, ZoomedElementBaseType } from 'd3-zoom';
+import { HierarchyNode } from 'd3-hierarchy';
+import { FlextreeNode } from 'd3-flextree';
+import { Link } from 'd3-shape';
 import { d3 } from 'constants';
 
 declare module 'd3-selection' {

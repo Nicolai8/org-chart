@@ -1,6 +1,6 @@
 import { d3 } from './constants';
 import { D3Node, OrgChartConnection, OrgChartDataItem, OrgChartState } from './types';
-import type { BaseType } from 'd3-selection';
+import { BaseType } from 'd3-selection';
 import { getTextWidth, hdiagonal } from 'utils';
 
 const canvasContext = document.createElement('canvas').getContext('2d');

@@ -1,7 +1,7 @@
 import { getChartOptions } from './options';
 import { LibName, d3 } from './constants';
 import { downloadImage, isEdge, groupBy, toDataURL, createRandomString, getNumber } from './utils';
-import type {
+import {
   D3Node,
   ExportImgOptions,
   FitOptions,
@@ -10,38 +10,32 @@ import type {
   OrgChartConnection,
   OrgChartDataItem,
 } from 'types';
-import type { BaseType, Selection } from 'd3-selection';
-import type { D3ZoomEvent, ZoomBehavior, ZoomedElementBaseType, ZoomTransform } from 'd3-zoom';
-import type { FlextreeLayout } from 'd3-flextree';
-import type { D3DragEvent, DraggedElementBaseType } from 'd3-drag';
-import { OrgChartState } from "types";
+import { BaseType, Selection } from 'd3-selection';
+import { D3ZoomEvent, ZoomBehavior, ZoomedElementBaseType, ZoomTransform } from 'd3-zoom';
+import { FlextreeLayout } from 'd3-flextree';
+import { D3DragEvent, DraggedElementBaseType } from 'd3-drag';
+import { OrgChartState } from 'types';
 import merge from 'lodash.merge';
 
 export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> implements IOrgChart<TData> {
   private _id = `${LibName}_${createRandomString()}`;
   private _firstDraw = false;
   private _nodeDefaultBackground = 'none';
-  private _lastTransform: ZoomTransform = { x: 0, y: 0, k: 1 }; // Panning and zooming values
-  private _zoomBehavior: ZoomBehavior<SVGElement, string>;
-  private _calc?: {
-    chartWidth: number;
-    chartHeight: number;
-    centerX: number;
-    centerY: number;
-  };
+  private _lastTransform: ZoomTransform = new ZoomTransform(1, 0, 0); // Panning and zooming values
+  private _zoomBehavior?: ZoomBehavior<SVGElement, string>;
   private _flexTreeLayout?: FlextreeLayout<TData>;
   private _allNodes: D3Node<TData>[] = [];
   private _root?: D3Node<TData>;
-  private _draggedNodesWrapper: Selection<SVGGraphicsElement, string, any, any>;
-  private _nodesWrapper: Selection<SVGGraphicsElement, string, any, any>;
-  private _svg: Selection<SVGElement, string, any, any>;
-  private _centerG: Selection<SVGGraphicsElement, string, any, any>;
-  private _linksWrapper: Selection<SVGGraphicsElement, string, any, any>;
-  private _connectionsWrapper: Selection<SVGGraphicsElement, string, any, any>;
-  private _defsWrapper: Selection<SVGGraphicsElement, string, any, any>;
-  private _chart: Selection<SVGGraphicsElement, string, any, any>;
+  private _draggedNodesWrapper?: Selection<SVGGraphicsElement, string, any, any>;
+  private _nodesWrapper?: Selection<SVGGraphicsElement, string, any, any>;
+  private _svg?: Selection<SVGElement, string, any, any>;
+  private _centerG?: Selection<SVGGraphicsElement, string, any, any>;
+  private _linksWrapper?: Selection<SVGGraphicsElement, string, any, any>;
+  private _connectionsWrapper?: Selection<SVGGraphicsElement, string, any, any>;
+  private _defsWrapper?: Selection<SVGGraphicsElement, string, any, any>;
+  private _chart?: Selection<SVGGraphicsElement, string, any, any>;
 
-  private readonly _attrs = getChartOptions<TData>();
+  private readonly options: OrgChartState<TData>;
   private _dragData: {
     sourceNode?: D3DragEvent<DraggedElementBaseType, D3Node<TData>, D3Node<TData>>;
     targetNode?: D3Node<TData>;
@@ -49,11 +43,11 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
   } = {};
 
   constructor(options?: Partial<OrgChartState<TData>>) {
-    this._attrs = merge({}, getChartOptions(), options);
+    this.options = merge({}, getChartOptions(), options);
   }
 
   getChartState() {
-    return this._attrs;
+    return this.options;
   }
 
   // This method retrieves passed node's children IDs (including node)
@@ -85,7 +79,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
     //InnerFunctions which will update visuals
     const attrs = this.getChartState();
     if (!attrs.data || attrs.data.length === 0) {
-      return this;
+      return;
     }
 
     //Drawing containers
@@ -97,14 +91,12 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
     }
 
     //Calculated properties
-    this._calc = {
+    const _calc = {
       chartWidth: attrs.svgWidth,
       chartHeight: attrs.svgHeight,
       centerX: attrs.svgWidth / 2,
       centerY: attrs.svgHeight / 2,
     };
-
-    // Calculate max node depth (it's needed for layout heights calculation)
 
     //****************** ROOT node work ************************
 
@@ -169,6 +161,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
       tag: 'g',
       selector: 'chart',
     });
+    this._chart = chart;
 
     // Add one more container g element, for better positioning controls
     this._centerG = chart.patternify<SVGGraphicsElement>({
@@ -204,25 +197,23 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
     if (this._firstDraw) {
       this._centerG.attr('transform', () => {
         return attrs.layoutBindings[attrs.layout].centerTransform({
-          centerX: this._calc!.centerX,
-          centerY: this._calc!.centerY,
+          centerX: _calc.centerX,
+          centerY: _calc.centerY,
           scale: this._lastTransform.k,
           rootMargin: attrs.rootMargin,
           root: this._root,
-          chartHeight: this._calc!.chartHeight,
-          chartWidth: this._calc!.chartWidth,
+          chartHeight: _calc.chartHeight,
+          chartWidth: _calc.chartWidth,
         });
       });
     }
-
-    this._chart = chart;
 
     // Display tree content
     this.update(this._root);
 
     d3.select(window).on(`resize.${this._id}`, () => {
       const containerRect = container?.node()?.getBoundingClientRect();
-      this._svg.attr('width', containerRect?.width ?? 0);
+      this._svg!.attr('width', containerRect?.width ?? 0);
     });
 
     if (this._firstDraw) {
@@ -468,9 +459,9 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
     const attrs = this.getChartState();
 
     // Get links selection
-    const linkSelection = this._linksWrapper
-      .selectAll<SVGPathElement, D3Node<TData>>('path.link')
-      .data(links, (d) => attrs.nodeId(d.data));
+    const linkSelection = this._linksWrapper!.selectAll<SVGPathElement, D3Node<TData>>('path.link').data(links, (d) =>
+      attrs.nodeId(d.data),
+    );
 
     // Enter any new links at the parent's previous position.
     const linkEnter = linkSelection
@@ -565,14 +556,14 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
     });
     const visibleConnections = connections.filter((d) => visibleNodesMap[d.from] && visibleNodesMap[d.to]);
     const defsString = attrs.defs.bind(this)(attrs, visibleConnections);
-    const existingString = this._defsWrapper.html();
+    const existingString = this._defsWrapper!.html();
     if (defsString !== existingString) {
-      this._defsWrapper.html(defsString);
+      this._defsWrapper!.html(defsString);
     }
 
-    const connectionsSel = this._connectionsWrapper
-      .selectAll<SVGPathElement, OrgChartConnection>('path.connection')
-      .data(visibleConnections);
+    const connectionsSel = this._connectionsWrapper!.selectAll<SVGPathElement, OrgChartConnection>(
+      'path.connection',
+    ).data(visibleConnections);
 
     // Enter any new connections at the parent's previous position.
     const connEnter = connectionsSel
@@ -635,9 +626,10 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
     const attrs = this.getChartState();
 
     // Get nodes selection
-    const nodesSelection = this._nodesWrapper
-      .selectAll<SVGGraphicsElement, FlextreeD3Node<TData>>('g.node')
-      .data(nodes, ({ data }) => attrs.nodeId(data));
+    const nodesSelection = this._nodesWrapper!.selectAll<SVGGraphicsElement, FlextreeD3Node<TData>>('g.node').data(
+      nodes,
+      ({ data }) => attrs.nodeId(data),
+    );
 
     // Enter any new nodes at the parent's previous position.
     const nodeEnter = nodesSelection
@@ -966,14 +958,12 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
   restyleForeignObjectElements() {
     const attrs = this.getChartState();
 
-    this._svg
-      .selectAll<HTMLImageElement, D3Node<TData>>('.node-foreign-object')
+    this._svg!.selectAll<HTMLImageElement, D3Node<TData>>('.node-foreign-object')
       .attr('width', ({ width }) => width)
       .attr('height', ({ height }) => height)
       .attr('x', () => 0)
       .attr('y', () => 0);
-    this._svg
-      .selectAll<HTMLElement, D3Node<TData>>('.node-foreign-object-div')
+    this._svg!.selectAll<HTMLElement, D3Node<TData>>('.node-foreign-object-div')
       .style('width', ({ width }: D3Node<TData>) => `${width}px`)
       .style('height', ({ height }: D3Node<TData>) => `${height}px`)
       .html(function (d, i, arr) {
@@ -1014,8 +1004,6 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
 
   // This function updates nodes state and redraws graph, usually after data change
   updateNodesState() {
-    const attrs = this.getChartState();
-
     this.setLayouts({ expandNodesFirst: true });
 
     // Redraw Graphs
@@ -1107,12 +1095,10 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
 
     identity = identity.translate(-(x0 + x1) / 2, -(y0 + y1) / 2);
     // Transition zoom wrapper component into specified bounds
-    this._svg
-      .transition()
+    this._svg!.transition()
       .duration(params.animate ? duration : 0)
-      .call(this._zoomBehavior.transform, identity);
-    this._centerG
-      .transition()
+      .call(this._zoomBehavior!.transform, identity);
+    this._centerG!.transition()
       .duration(params.animate ? duration : 0)
       .attr('transform', 'translate(0,0)');
   }
@@ -1206,10 +1192,10 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
       const fsElement = document.fullscreenElement;
       if (fsElement === el) {
         setTimeout(() => {
-          this._svg.attr('height', window.innerHeight - 40);
+          this._svg!.attr('height', window.innerHeight - 40);
         }, 500);
       } else {
-        this._svg.attr('height', attrs.svgHeight);
+        this._svg!.attr('height', attrs.svgHeight);
       }
     });
 
@@ -1219,15 +1205,15 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
   }
 
   zoom(scale: number) {
-    this._svg.transition().call(this._zoomBehavior.scaleTo, scale < 0 || typeof scale === 'undefined' ? 1 : scale);
+    this._svg!.transition().call(this._zoomBehavior!.scaleTo, scale < 0 || typeof scale === 'undefined' ? 1 : scale);
   }
 
   zoomIn() {
-    this._svg.transition().call(this._zoomBehavior.scaleBy, 1.3);
+    this._svg!.transition().call(this._zoomBehavior!.scaleBy, 1.3);
   }
 
   zoomOut() {
-    this._svg.transition().call(this._zoomBehavior.scaleBy, 0.78);
+    this._svg!.transition().call(this._zoomBehavior!.scaleBy, 0.78);
   }
 
   exportImg(options?: ExportImgOptions) {
@@ -1236,7 +1222,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
 
     const { duration, imageName } = this.getChartState();
     let count = 0;
-    const selection = this._svg.selectAll<HTMLImageElement, any>('img');
+    const selection = this._svg!.selectAll<HTMLImageElement, any>('img');
     let total = selection.size();
 
     const exportImage = () => {
@@ -1247,7 +1233,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
       setTimeout(
         () => {
           downloadImage({
-            node: self._svg.node()!,
+            node: self._svg!.node()!,
             scale,
             isSvg: false,
             onAlreadySerialized: () => {
@@ -1278,7 +1264,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
 
   exportSvg() {
     const { imageName } = this.getChartState();
-    downloadImage({ imageName: imageName, node: this._svg.node()!, scale: 3, isSvg: true });
+    downloadImage({ imageName: imageName, node: this._svg!.node()!, scale: 3, isSvg: true });
     return this;
   }
 
@@ -1378,8 +1364,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
       return;
     }
 
-    this._svg
-      .selectAll<DraggedElementBaseType, D3Node<TData>>('.node')
+    this._svg!.selectAll<DraggedElementBaseType, D3Node<TData>>('.node')
       .filter((d) => !!attrs.parentNodeId(d.data) && attrs.isNodeDraggable(d.data))
       .call(
         d3
@@ -1415,7 +1400,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
     const draggingNode = d3.select<DraggedElementBaseType, D3Node<TData>>(draggingEl).classed('dragging', true);
     const draggingElClone = draggingNode.clone(true);
     (draggingElClone.select('.node-compact-g').node() as HTMLElement).remove();
-    this._draggedNodesWrapper.node()!.appendChild(draggingElClone.node()!);
+    this._draggedNodesWrapper!.node()!.appendChild(draggingElClone.node()!);
     draggingNode.selectAll('.node-foreign-object, .node-button-g, .node-rect').attr('opacity', 0);
     orgChartInstance._dragData = {
       draggingElClone: draggingElClone,
@@ -1425,7 +1410,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
   }
 
   private dragged(
-    draggingEl: DraggedElementBaseType,
+    _: DraggedElementBaseType,
     event: D3DragEvent<DraggedElementBaseType, D3Node<TData>, D3Node<TData>>,
     d: D3Node<TData>,
   ) {
@@ -1508,7 +1493,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
           attrs.setParentNodeId(sourceNodeInStore, targetNodeData.id);
           attrs.onDataChange(attrs.data!);
 
-          this._nodesWrapper.node()!.insertBefore(draggingEl, (targetD3Node.node() as HTMLElement)?.nextSibling);
+          this._nodesWrapper!.node()!.insertBefore(draggingEl, (targetD3Node.node() as HTMLElement)?.nextSibling);
 
           orgChartInstance.updateNodesState();
         }
