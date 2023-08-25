@@ -92,7 +92,7 @@ export type LayoutBinding<TData extends OrgChartDataItem = OrgChartDataItem> = {
   };
   nodeFlexSize: ({ height, width, siblingsMargin, childrenMargin, state, node }) => [number, number];
   zoomTransform: ({ centerX, centerY, scale }) => string;
-  diagonal: (s, t, m) => string;
+  diagonal: (s: Coords, t: Coords, m?: Coords, offsets?: { sy: number }) => string;
   swap: (d: D3Node<TData>) => void;
   nodeUpdateTransform: ({ x, y, width, height }) => string;
 };

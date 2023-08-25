@@ -1,7 +1,7 @@
 import { d3 } from './constants';
 import { D3Node, OrgChartConnection, OrgChartDataItem, OrgChartState } from './types';
 import { BaseType } from 'd3-selection';
-import { getTextWidth, hdiagonal } from './utils';
+import { diagonal, getTextWidth, hdiagonal } from "./utils";
 
 const canvasContext = document.createElement('canvas').getContext('2d');
 
@@ -283,7 +283,7 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
         return [width + siblingsMargin, height + childrenMargin];
       },
       zoomTransform: ({ centerX, scale }) => `translate(${centerX},0}) scale(${scale})`,
-      diagonal: hdiagonal.bind(this),
+      diagonal: diagonal.bind(this),
       swap: () => {},
       nodeUpdateTransform: ({ x, y, width }) => `translate(${x - width / 2},${y})`,
     },
@@ -323,7 +323,7 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
         return [width + siblingsMargin, height + childrenMargin];
       },
       zoomTransform: ({ centerX, scale }) => `translate(${centerX},0}) scale(${scale})`,
-      diagonal: hdiagonal.bind(this),
+      diagonal: diagonal.bind(this),
       swap: (d) => {
         d.y = -d.y;
       },

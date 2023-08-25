@@ -151,7 +151,7 @@ export const getTextWidth = (text: string, options: GetTextWidthOptions) => {
 };
 
 /* Horizontal diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compact-horizontal */
-export const hdiagonal = function (s: Coords, t: Coords, m: Coords): string {
+export const hdiagonal = function (s: Coords, t: Coords, m?: Coords, offsets?: { sy: number }): string {
   // Define source and target x,y coordinates
   const x = s.x;
   const y = s.y;
@@ -195,7 +195,7 @@ export const hdiagonal = function (s: Coords, t: Coords, m: Coords): string {
 };
 
 /* Vertical diagonal generation algorithm - https://observablehq.com/@bumbeishvili/curved-edges-compacty-vertical */
-export const diagonal = function (s: Coords, t: Coords, m: Coords, offsets?: { sy: number }): string {
+export const diagonal = function (s: Coords, t: Coords, m?: Coords, offsets?: { sy: number }): string {
   const x = s.x;
   let y = s.y;
 

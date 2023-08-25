@@ -518,7 +518,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
                 y: attrs.layoutBindings[attrs.layout].linkCompactYStart(d),
               }
             : n;
-        return attrs.layoutBindings[attrs.layout].diagonal(n, p, m /*, { sy: attrs.linkYOffset }*/);
+        return attrs.layoutBindings[attrs.layout].diagonal(n, p, m, { sy: attrs.linkYOffset });
       });
 
     // Remove any  links which is exiting after animation
@@ -530,7 +530,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
         const xo = attrs.layoutBindings[attrs.layout].linkJoinX({ x, y, width, height });
         const yo = attrs.layoutBindings[attrs.layout].linkJoinY({ x, y, width, height });
         const o = { x: xo, y: yo };
-        return attrs.layoutBindings[attrs.layout].diagonal(o, o, null /*, { sy: attrs.linkYOffset }*/);
+        return attrs.layoutBindings[attrs.layout].diagonal(o, o, undefined, { sy: attrs.linkYOffset });
       })
       .remove();
   }
@@ -574,7 +574,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> impleme
         const xo = attrs.layoutBindings[attrs.layout].linkJoinX({ x: x0, y: y0, width, height });
         const yo = attrs.layoutBindings[attrs.layout].linkJoinY({ x: x0, y: y0, width, height });
         const o = { x: xo, y: yo };
-        return attrs.layoutBindings[attrs.layout].diagonal(o, o, null /*, { sy: attrs.linkYOffset }*/);
+        return attrs.layoutBindings[attrs.layout].diagonal(o, o, undefined, { sy: attrs.linkYOffset });
       });
 
     // Get connections update selection
