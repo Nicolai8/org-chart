@@ -78,8 +78,8 @@ export type LayoutBinding<TData extends OrgChartDataItem = OrgChartDataItem> = {
   linkY: (node: D3NodeDimensions) => number;
   linkCompactXStart: (node: D3Node<TData>) => number;
   linkCompactYStart: (node: D3Node<TData>) => number;
-  compactLinkMidX: (node: D3Node<TData>, state: OrgChartState<TData>) => number;
-  compactLinkMidY: (node: D3Node<TData>, state: OrgChartState<TData>) => number;
+  compactLinkMidX: (node: D3Node<TData>, state: OrgChartOptions<TData>) => number;
+  compactLinkMidY: (node: D3Node<TData>, state: OrgChartOptions<TData>) => number;
   linkParentX: (node: D3Node<TData>) => number;
   linkParentY: (node: D3Node<TData>) => number;
   buttonX: (node: D3NodeDimensions) => number;
@@ -104,7 +104,7 @@ export type LayoutBindings<TData extends OrgChartDataItem = OrgChartDataItem> = 
   right: LayoutBinding<TData>;
 };
 
-export type OrgChartState<TData extends {} = OrgChartDataItem> = {
+export type OrgChartOptions<TData extends {} = OrgChartDataItem> = {
   // Configure svg width
   svgWidth: number;
   // Configure svg height
@@ -175,7 +175,7 @@ export type OrgChartState<TData extends {} = OrgChartDataItem> = {
   enableWheelZoom: boolean;
   // Callback for node click
   onNodeClick: (d: TData) => void;
-  nodeContent: (d: D3Node<TData>, i: number, arr: ArrayLike<HTMLElement>, state: OrgChartState<TData>) => string;
+  nodeContent: (d: D3Node<TData>, i: number, arr: ArrayLike<HTMLElement>, state: OrgChartOptions<TData>) => string;
 
   // Enable drag and drop
   dragNDrop: boolean;
@@ -184,14 +184,14 @@ export type OrgChartState<TData extends {} = OrgChartDataItem> = {
   isNodeDroppable: (source: TData, target: TData) => boolean;
 
   /* Node expand & collapse button content and styling. You can access same helper methods as above */
-  buttonContent: ({ node, state }: { node: D3Node<TData>; state: OrgChartState<TData> }) => string;
+  buttonContent: ({ node, state }: { node: D3Node<TData>; state: OrgChartOptions<TData> }) => string;
   /* You can access and modify actual node DOM element in runtime using this method. */
   nodeUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
   /* You can access and modify actual link DOM element in runtime using this method. */
   linkUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
   compactNoChildrenUpdate: (compactGroupRect: Selection<BaseType, D3Node<TData>>) => void;
   // Defining arrows with markers for connections
-  defs: (state: OrgChartState<TData>, visibleConnections: OrgChartConnection[]) => string;
+  defs: (state: OrgChartOptions<TData>, visibleConnections: OrgChartConnection[]) => string;
   /* You can update connections with custom styling using this function */
   connectionsUpdate: (this: BaseType, d: OrgChartConnection, i: number, arr: ArrayLike<BaseType>) => void;
   // Link generator for connections
@@ -221,7 +221,9 @@ export interface IOrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
 
   /* Methods*/
   getData: () => TData[] | null;
-  getChartState: () => OrgChartState<TData>;
+  getRootNode: () => D3Node<TData> | undefined;
+  setOptions: (options: Partial<OrgChartOptions<TData>>) => void;
+  getOptions: () => OrgChartOptions<TData>;
   render: () => void;
   update: (node: D3Node<TData>) => void;
   updateNodesState: () => void;

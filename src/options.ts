@@ -1,11 +1,11 @@
 import { d3 } from './constants';
-import { D3Node, OrgChartConnection, OrgChartDataItem, OrgChartState } from './types';
+import { D3Node, OrgChartConnection, OrgChartDataItem, OrgChartOptions } from './types';
 import { BaseType } from 'd3-selection';
 import { diagonal, getTextWidth, hdiagonal } from "./utils";
 
 const canvasContext = document.createElement('canvas').getContext('2d');
 
-export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataItem>(): OrgChartState<TData> => ({
+export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataItem>(): OrgChartOptions<TData> => ({
   svgWidth: 800, // Configure svg width
   svgHeight: window.innerHeight - 100, // Configure svg height
   // todo: review probably private
