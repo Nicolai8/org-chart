@@ -1,8 +1,6 @@
 {
   "name": "@nicolai8/d3-org-chart",
   "version": "3.0.1-next.18",
-  "module": "index",
-  "type": "module",
   "description": "Highly customizable org chart, created with d3",
   "keywords": [
     "d3",
@@ -13,8 +11,8 @@
     "employee"
   ],
   "license": "MIT",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
   "bugs": {
     "url": "https://github.com/Nicolai8/org-chart/issues"
   },
@@ -24,12 +22,17 @@
     "url": "https://github.com/Nicolai8/org-chart.git"
   },
   "scripts": {
+    "start": "webpack serve",
     "build": "tsc",
-    "start": "nodemon ",
     "checkTs": "tsc --noEmit",
     "prepare": "npm run build"
   },
   "devDependencies": {
+    "@babel/cli": "7.22.9",
+    "@babel/core": "7.22.11",
+    "@babel/plugin-proposal-class-properties": "7.16.0",
+    "@babel/plugin-transform-typescript": "7.22.11",
+    "@babel/preset-env": "7.22.10",
     "@types/d3-array": "3.0.6",
     "@types/d3-drag": "3.0.3",
     "@types/d3-flextree": "2.1.1",
@@ -39,7 +42,13 @@
     "@types/d3-transition": "3.0.4",
     "@types/d3-zoom": "3.0.4",
     "@types/lodash.merge": "4.6.7",
-    "prettier": "2.8.4"
+    "babel-loader": "9.1.3",
+    "html-webpack-plugin": "^5.5.3",
+    "prettier": "2.8.4",
+    "typescript": "5.2.2",
+    "webpack": "5.88.2",
+    "webpack-cli": "5.1.4",
+    "webpack-dev-server": "4.13.3"
   },
   "dependencies": {
     "d3-array": "3.2.4",
@@ -50,10 +59,6 @@
     "d3-shape": "3.2.0",
     "d3-transition": "3.0.1",
     "d3-zoom": "3.0.0",
-    "lodash.merge": "4.6.2",
-    "typescript": "5.2.2"
-  },
-  "files": [
-    "lib/**/*"
-  ]
+    "lodash.merge": "4.6.2"
+  }
 }

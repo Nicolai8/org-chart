@@ -9,17 +9,17 @@ import {
   IOrgChart,
   OrgChartConnection,
   OrgChartDataItem,
-} from 'types';
+  OrgChartState,
+} from './types';
 import { BaseType, Selection } from 'd3-selection';
 import { D3ZoomEvent, ZoomBehavior, ZoomedElementBaseType, ZoomTransform } from 'd3-zoom';
 import { FlextreeLayout } from 'd3-flextree';
 import { D3DragEvent, DraggedElementBaseType } from 'd3-drag';
-import { OrgChartState } from 'types';
 import merge from 'lodash.merge';
 
 export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> implements IOrgChart<TData> {
   private _id = `${LibName}_${createRandomString()}`;
-  private _firstDraw = false;
+  private _firstDraw = true;
   private _nodeDefaultBackground = 'none';
   private _lastTransform: ZoomTransform = new ZoomTransform(1, 0, 0); // Panning and zooming values
   private _zoomBehavior?: ZoomBehavior<SVGElement, string>;
