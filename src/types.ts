@@ -3,11 +3,10 @@ import { D3ZoomEvent, ZoomedElementBaseType } from 'd3-zoom';
 import { HierarchyNode } from 'd3-hierarchy';
 import { FlextreeNode } from 'd3-flextree';
 import { Link } from 'd3-shape';
-import { d3 } from 'constants';
 
 declare module 'd3-selection' {
   export interface Selection<GElement extends BaseType, Datum, PElement extends BaseType, PDatum> {
-    patternify<NewGElement, T = any>(params: {
+    patternify<NewGElement extends BaseType, T = any>(params: {
       selector: string;
       tag: string;
       data?: (d: T) => T[];
@@ -15,9 +14,10 @@ declare module 'd3-selection' {
   }
 }
 
-export type OrgChartDataItem<TData = {}> = TData & {
+export type OrgChartDataItem<TData = {
   id: string;
   parentId?: string;
+}> = TData & {
   _highlighted?: boolean;
   _upToTheRootHighlighted?: boolean;
   _centeredWithDescendants?: boolean;
@@ -65,6 +65,25 @@ export type OrgChartConnection = {
   _target: D3NodeDimensions;
 };
 
+type CenterTransformOptions<TData extends OrgChartDataItem = OrgChartDataItem> = {
+  root?: D3Node<TData>;
+  rootMargin: number;
+  centerY: number;
+  scale: number;
+  centerX: number;
+  chartWidth: number;
+  chartHeight: number;
+};
+
+type NodeFlexSizeOptions<TData extends OrgChartDataItem = OrgChartDataItem> = {
+  height: number;
+  width: number;
+  siblingsMargin: number;
+  childrenMargin: number;
+  state: OrgChartOptions<TData>;
+  node: D3Node<TData>;
+};
+
 export type LayoutBinding<TData extends OrgChartDataItem = OrgChartDataItem> = {
   nodeLeftX: (node: D3NodeDimensions) => number;
   nodeRightX: (node: D3NodeDimensions) => number;
@@ -84,17 +103,17 @@ export type LayoutBinding<TData extends OrgChartDataItem = OrgChartDataItem> = {
   linkParentY: (node: D3Node<TData>) => number;
   buttonX: (node: D3NodeDimensions) => number;
   buttonY: (node: D3NodeDimensions) => number;
-  centerTransform: ({ root, rootMargin, centerY, scale, centerX, chartWidth, chartHeight }) => string;
+  centerTransform: (options: CenterTransformOptions<TData>) => string;
   compactDimension: {
     sizeColumn: (node: D3Node<TData>) => number;
     sizeRow: (node: D3Node<TData>) => number;
     reverse: <T>(arr: Array<T>) => Array<T>;
   };
-  nodeFlexSize: ({ height, width, siblingsMargin, childrenMargin, state, node }) => [number, number];
-  zoomTransform: ({ centerX, centerY, scale }) => string;
+  nodeFlexSize: (options: NodeFlexSizeOptions<TData>) => [number, number];
+  zoomTransform: ({ centerX, centerY, scale }: { centerX: number; centerY: number; scale: number }) => string;
   diagonal: (s: Coords, t: Coords, m?: Coords, offsets?: { sy: number }) => string;
   swap: (d: D3Node<TData>) => void;
-  nodeUpdateTransform: ({ x, y, width, height }) => string;
+  nodeUpdateTransform: ({ x, y, width, height }: D3NodeDimensions) => string;
 };
 
 export type LayoutBindings<TData extends OrgChartDataItem = OrgChartDataItem> = {
@@ -104,56 +123,43 @@ export type LayoutBindings<TData extends OrgChartDataItem = OrgChartDataItem> = 
   right: LayoutBinding<TData>;
 };
 
-export type OrgChartOptions<TData extends {} = OrgChartDataItem> = {
+export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> = {
   // Configure svg width
   svgWidth: number;
   // Configure svg height
   svgHeight: number;
-  expandLevel: number;
   // Set parent container, either CSS style selector or DOM element
   container: HTMLElement;
+
+  /**
+   * Configure accessor for node id, default is id
+   */
+  nodeIdKey: keyof TData;
+  /**
+   * Configure accessor for parent node id, default is parentId
+   */
+  parentNodeIdKey: keyof TData;
   // Set data, it must be an array of objects, where hierarchy is clearly defined via id and parent ID (property names are configurable)
   data: TData[] | null;
   // Callback for data change
   onDataChange: (data: TData[]) => void;
   // Sets connection data, array of objects, SAMPLE:  [{from:"145",to:"201",label:"Conflicts of interest"}]
   connections: OrgChartConnection[];
-  // Set default font
-  defaultFont: string;
-  // Configure accessor for node id, default is either odeId or id
-  nodeId: (d: TData) => string;
-  setNodeId: (d: TData, newId: string) => void;
-  // Configure accessor for parent node id, default is either parentNodeId or parentId
-  parentNodeId: (d: TData) => string | undefined;
-  setParentNodeId: (d: TData, newId: string) => void;
+
   // Configure how much root node is offset from top
   rootMargin: number;
-  // Configure each node width, use with caution, it is better to have the same value set for all nodes
-  nodeWidth: (d: D3Node<TData>) => number;
-  //  Configure each node height, use with caution, it is better to have the same value set for all nodes
-  nodeHeight: (d: D3Node<TData>) => number;
   // Configure margin between two nodes, use with caution, it is better to have the same value set for all nodes
   neighbourMargin: (n1: D3Node<TData>, n2: D3Node<TData>) => number;
   // Configure margin between two siblings, use with caution, it is better to have the same value set for all nodes
   siblingsMargin: (d: D3Node<TData>) => number;
   // Configure margin between parent and children, use with caution, it is better to have the same value set for all nodes
-  childrenMargin: (d: D3Node<TData>) => number;
-  // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
-  compactMarginPair: (d: D3Node<TData>) => number;
-  // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
-  compactMarginBetween: (d?: D3Node<TData>) => number;
-  // Configure expand & collapse button width
-  nodeButtonWidth: (d: D3Node<TData>) => number;
-  // Configure expand & collapse button height
-  nodeButtonHeight: (d: D3Node<TData>) => number;
-  // Configure expand & collapse button x position
-  nodeButtonX: (d: D3Node<TData>) => number;
-  // Configure expand & collapse button y position
-  nodeButtonY: (d: D3Node<TData>) => number;
+  childrenMargin: (d: D3Node<TData>) => number;// Configure expand & collapse button width
   // When correcting links which is not working for safari
   linkYOffset: number;
-  // Configure zoom scale extent , if you don't want any kind of zooming, set it to [1,1]
-  scaleExtent: [number, number];
+
+  expandLevel: number;
+  // Set default font
+  defaultFont: string;
   duration: number; // Configure duration of transitions
   // Configure exported PNG and SVG image name
   imageName: string;
@@ -161,10 +167,24 @@ export type OrgChartOptions<TData extends {} = OrgChartDataItem> = {
   setActiveNodeCentered: boolean;
   // Configure layout direction , possible values are "top", "left", "right", "bottom"
   layout: OrgChartLayoutType;
-  // Configure if compact mode is enabled , when enabled, nodes are shown in compact positions, instead of horizontal spread
+
+  /**
+   * Configure if compact mode is enabled , when enabled, nodes are shown in compact positions, instead of horizontal spread
+   */
   compact: boolean;
+  /**
+   * Configure to compact nodes without children only.
+   * @property compact should also be set to true
+   */
   compactNoChildren: boolean;
   compactNoChildrenMargin: number;
+  // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
+  compactMarginPair: (d: D3Node<TData>) => number;
+  // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
+  compactMarginBetween: (d?: D3Node<TData>) => number;
+
+  // Configure zoom scale extent , if you don't want any kind of zooming, set it to [1,1]
+  scaleExtent: [number, number];
   // Callback for zoom & panning start
   onZoomStart: (d: D3ZoomEvent<ZoomedElementBaseType, D3Node<TData>>) => void;
   // Callback for zoom & panning
@@ -173,9 +193,18 @@ export type OrgChartOptions<TData extends {} = OrgChartDataItem> = {
   onZoomEnd: (d: D3ZoomEvent<ZoomedElementBaseType, D3Node<TData>>) => void;
   enableDoubleClickZoom: boolean;
   enableWheelZoom: boolean;
+
+  // Configure each node width, use with caution, it is better to have the same value set for all nodes
+  nodeWidth: (d: D3Node<TData>) => number;
+  //  Configure each node height, use with caution, it is better to have the same value set for all nodes
+  nodeHeight: (d: D3Node<TData>) => number;
   // Callback for node click
   onNodeClick: (d: TData) => void;
   nodeContent: (d: D3Node<TData>, i: number, arr: ArrayLike<HTMLElement>, state: OrgChartOptions<TData>) => string;
+  /**
+   * You can access and modify actual node DOM element in runtime using this method.
+   */
+  nodeUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
 
   // Enable drag and drop
   dragNDrop: boolean;
@@ -183,29 +212,43 @@ export type OrgChartOptions<TData extends {} = OrgChartDataItem> = {
   isNodeDraggable: (node: TData) => boolean;
   isNodeDroppable: (source: TData, target: TData) => boolean;
 
-  /* Node expand & collapse button content and styling. You can access same helper methods as above */
+  /**
+   * Configure if you want to show/hide node button in specific case.
+   * E.g. you want to use this button as children loader.
+   * By default, it's shown when _directSubordinates > 0.
+   */
+  isNodeButtonVisible: (d: D3Node<TData>) => boolean;
+  nodeButtonWidth: (d: D3Node<TData>) => number;
+  // Configure expand & collapse button height
+  nodeButtonHeight: (d: D3Node<TData>) => number;
+  // Configure expand & collapse button x position
+  nodeButtonX: (d: D3Node<TData>) => number;
+  // Configure expand & collapse button y position
+  nodeButtonY: (d: D3Node<TData>) => number;
+  /**
+   * Node expand & collapse button content and styling. You can access same helper methods as above
+   */
   buttonContent: ({ node, state }: { node: D3Node<TData>; state: OrgChartOptions<TData> }) => string;
-  /* You can access and modify actual node DOM element in runtime using this method. */
-  nodeUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
-  /* You can access and modify actual link DOM element in runtime using this method. */
+
+  /**
+   * You can access and modify actual link DOM element in runtime using this method.
+   */
   linkUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
-  compactNoChildrenUpdate: (compactGroupRect: Selection<BaseType, D3Node<TData>>) => void;
-  // Defining arrows with markers for connections
+
+  compactNoChildrenUpdate: (compactGroupRect: Selection<BaseType, FlextreeD3Node<TData>, SVGGraphicsElement, string>) => void;
+  /**
+   * Defining arrows with markers for connections
+   */
   defs: (state: OrgChartOptions<TData>, visibleConnections: OrgChartConnection[]) => string;
-  /* You can update connections with custom styling using this function */
+  /**
+   * You can update connections with custom styling using this function
+   */
   connectionsUpdate: (this: BaseType, d: OrgChartConnection, i: number, arr: ArrayLike<BaseType>) => void;
-  // Link generator for connections
+  /**
+   * Link generator for connections
+   */
   linkGroupArc: Link<any, any, D3Node<TData>>;
 
-  /*
-   *   You can customize/offset positions for each node and link by overriding these functions
-   *   For example, suppose you want to move link y position 30 px bellow in top layout. You can do it like this:
-   *   ```javascript
-   *   const layout = chart.layoutBindings();
-   *   layout.top.linkY = node => node.y + 30;
-   *   chart.layoutBindings(layout);
-   *   ```
-   */
   layoutBindings: LayoutBindings<TData>;
 };
 
@@ -214,44 +257,5 @@ export type FitOptions<TData extends OrgChartDataItem = OrgChartDataItem> = {
   nodes?: D3Node<TData>[];
   scale?: boolean;
 };
+
 export type ExportImgOptions = { full?: boolean; scale?: number; onLoad?: (img: string) => void; save?: boolean };
-
-export interface IOrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
-  readonly d3Instance: typeof d3;
-
-  /* Methods*/
-  getData: () => TData[] | null;
-  getRootNode: () => D3Node<TData> | undefined;
-  setOptions: (options: Partial<OrgChartOptions<TData>>) => void;
-  getOptions: () => OrgChartOptions<TData>;
-  render: () => void;
-  update: (node: D3Node<TData>) => void;
-  updateNodesState: () => void;
-  setExpanded: (nodeId: string, expandedFlag?: boolean) => IOrgChart<TData>;
-  setCentered: (nodeId: string) => IOrgChart<TData>;
-  setHighlighted: (nodeId: string) => IOrgChart<TData>;
-  setUpToTheRootHighlighted: (nodeId: string) => IOrgChart<TData>;
-  clearHighlighting: () => void;
-  // This function can be invoked via chart.addNode API, and it adds node in tree at runtime
-  addNode: (node: TData) => void;
-  addNodes: (nodes: TData[]) => void;
-  // This function can be invoked via chart.removeNode API, and it removes node from tree at runtime
-  removeNode: (nodeId: string) => void;
-  fit: (opts?: FitOptions<TData>) => void;
-  // It can take selector which would go fullscreen
-  fullscreen: (element?: HTMLElement) => void;
-  // Zoom to specific scale
-  zoom: (scale: number) => void;
-  // Zoom in exposed method
-  zoomIn: () => void;
-  // Zoom out exposed method
-  zoomOut: () => void;
-  // Function which expands passed node and it's descendants
-  expand: (d: D3Node<TData>) => void;
-  expandAll: () => void;
-  // Function which collapses passed node and it's descendants
-  collapse: (d: D3Node<TData>) => void;
-  collapseAll: () => void;
-  exportSvg: () => void;
-  exportImg: (opts?: ExportImgOptions) => void;
-}

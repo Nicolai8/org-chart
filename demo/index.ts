@@ -1,4 +1,4 @@
-import {OrgChart} from '../src/OrgChart';
+import { OrgChart } from '../src/OrgChart';
 
 //@ts-ignore
 window.OrgChart = OrgChart;

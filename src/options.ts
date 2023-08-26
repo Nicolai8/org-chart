@@ -1,74 +1,50 @@
 import { d3 } from './constants';
 import { D3Node, OrgChartConnection, OrgChartDataItem, OrgChartOptions } from './types';
 import { BaseType } from 'd3-selection';
-import { diagonal, getTextWidth, hdiagonal } from "./utils";
+import { diagonal, getTextWidth, hdiagonal } from './utils';
 
 const canvasContext = document.createElement('canvas').getContext('2d');
 
 export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataItem>(): OrgChartOptions<TData> => ({
-  svgWidth: 800, // Configure svg width
-  svgHeight: window.innerHeight - 100, // Configure svg height
-  // todo: review probably private
+  svgWidth: 800,
+  svgHeight: window.innerHeight - 100,
+  container: document.body,
+
+  nodeIdKey: 'id',
+  parentNodeIdKey: 'parentId',
+  data: null,
+  onDataChange: () => {},
+  connections: [],
+
+  rootMargin: 40,
+  neighbourMargin: () => 80,
+  siblingsMargin: () => 20,
+  childrenMargin: () => 60,
+  linkYOffset: 30,
+
   expandLevel: 1,
-  container: document.body, // Set parent container, either CSS style selector or DOM element
-  data: null, // Set data, it must be an array of objects, where hierarchy is clearly defined via id and parent ID (property names are configurable)
-  onDataChange: () => {}, // Callback for data change
-  connections: [], // Sets connection data, array of objects, SAMPLE:  [{from:"145",to:"201",label:"Conflicts of interest"}]
-  defaultFont: 'Helvetica', // Set default font
-  nodeId: (d) => d.id, // Configure accessor for node id, default is either odeId or id
-  setNodeId: (d, newId) => (d.id = newId),
-  parentNodeId: (d) => d.parentId, // Configure accessor for parent node id, default is either parentNodeId or parentId
-  setParentNodeId: (d, newId) => (d.parentId = newId),
-  rootMargin: 40, // Configure how much root node is offset from top
-  nodeWidth: () => 250, // Configure each node width, use with caution, it is better to have the same value set for all nodes
-  nodeHeight: () => 150, //  Configure each node height, use with caution, it is better to have the same value set for all nodes
-  neighbourMargin: () => 80, // Configure margin between two nodes, use with caution, it is better to have the same value set for all nodes
-  siblingsMargin: () => 20, // Configure margin between two siblings, use with caution, it is better to have the same value set for all nodes
-  childrenMargin: () => 60, // Configure margin between parent and children, use with caution, it is better to have the same value set for all nodes
-  compactMarginPair: () => 100, // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
-  compactMarginBetween: () => 20, // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
-  nodeButtonWidth: () => 40, // Configure expand & collapse button width
-  nodeButtonHeight: () => 40, // Configure expand & collapse button height
-  nodeButtonX: () => -20, // Configure expand & collapse button x position
-  nodeButtonY: () => -20, // Configure expand & collapse button y position
-  linkYOffset: 30, // When correcting links which is not working for safari
-  scaleExtent: [0.001, 20], // Configure zoom scale extent , if you don't want any kind of zooming, set it to [1,1]
-  duration: 400, // Configure duration of transitions
-  imageName: 'Chart', // Configure exported PNG and SVG image name
-  setActiveNodeCentered: true, // Configure if active node should be centered when expanded and collapsed
-  layout: 'top', // Configure layout direction , possible values are "top", "left", "right", "bottom"
-  compact: true, // Configure if compact mode is enabled , when enabled, nodes are shown in compact positions, instead of horizontal spread
+  defaultFont: 'Helvetica',
+  duration: 400,
+  imageName: 'Chart',
+  setActiveNodeCentered: true,
+  layout: 'top',
+
+  compact: true,
   compactNoChildren: false,
   compactNoChildrenMargin: 15,
-  onZoomStart: () => {}, // Callback for zoom & panning start
-  onZoom: () => {}, // Callback for zoom & panning
-  onZoomEnd: () => {}, // Callback for zoom & panning end
+  compactMarginPair: () => 100,
+  compactMarginBetween: () => 20,
+
+  scaleExtent: [0.001, 20],
+  onZoomStart: () => {},
+  onZoom: () => {},
+  onZoomEnd: () => {},
   enableDoubleClickZoom: false,
   enableWheelZoom: true,
-  onNodeClick: (d) => d, // Callback for node click
 
-  /*
-  * Node HTML content generation , remember that you can access some helper methods:
-
-  * node=> node.data - to access node's original data
-  * node=> node.leaves() - to access node's leaves
-  * node=> node.descendants() - to access node's descendants
-  * node=> node.children - to access node's children
-  * node=> node.parent - to access node's parent
-  * node=> node.depth - to access node's depth
-  * node=> node.height - to access node's height
-  * node=> node.width - to access node's width
-  *
-  * You can also access additional properties to style your node:
-  *
-  * d=>d.data._centeredWithDescendants - when node is centered with descendants
-  * d=>d.data._directSubordinates - subordinates count
-  * d=>d.data._totalSubordinates - total subordinates count
-  * d=>d._highlighted - when node is highlighted
-  * d=>d._upToTheRootHighlighted - when node is highlighted up to the root
-  * d=>d._expanded - when node is expanded
-  * d=>d.data._centered - when node is centered
-  */
+  nodeWidth: () => 250,
+  nodeHeight: () => 150,
+  onNodeClick: (d) => d,
   nodeContent: (d) => `<div style="padding:5px;font-size:10px;">Sample Node(id=${d.id}), override using <br/> 
             <code>chart.nodeContent({data}=>{ <br/>
              &nbsp;&nbsp;&nbsp;&nbsp;return '' // Custom HTML <br/>
@@ -76,14 +52,25 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
              <br/> 
              Or check different <a href="https://github.com/bumbeishvili/org-chart#jump-to-examples" target="_blank">layout examples</a>
              </div>`,
+  nodeUpdate: function (d) {
+    d3.select<BaseType, D3Node<TData>>(this)
+      .select('.node-rect')
+      .attr('stroke', (d) => (d.data._highlighted || d.data._upToTheRootHighlighted ? '#E27396' : 'none'))
+      .attr('stroke-width', d.data._highlighted || d.data._upToTheRootHighlighted ? 10 : 1);
+  },
 
-  /* Drag and Drop options */
   dragNDrop: true,
   onNodeDrop: () => true,
   isNodeDraggable: () => true,
   isNodeDroppable: () => true,
 
-  /* Node expand & collapse button content and styling. You can access same helper methods as above */
+  isNodeButtonVisible: ({ data }) => {
+    return !!data._directSubordinates && data._directSubordinates > 0;
+  },
+  nodeButtonWidth: () => 40,
+  nodeButtonHeight: () => 40,
+  nodeButtonX: () => -20,
+  nodeButtonY: () => -20,
   buttonContent: ({ node, state }) => {
     const icons = {
       left: (d?: Array<D3Node<TData>> | null) =>
@@ -127,14 +114,7 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
       state.layout
     ](node.children)}  </div>`;
   },
-  /* You can access and modify actual node DOM element in runtime using this method. */
-  nodeUpdate: function (d) {
-    d3.select<BaseType, D3Node<TData>>(this)
-      .select('.node-rect')
-      .attr('stroke', (d) => (d.data._highlighted || d.data._upToTheRootHighlighted ? '#E27396' : 'none'))
-      .attr('stroke-width', d.data._highlighted || d.data._upToTheRootHighlighted ? 10 : 1);
-  },
-  /* You can access and modify actual link DOM element in runtime using this method. */
+
   linkUpdate: function (d) {
     d3.select<BaseType, D3Node<TData>>(this)
       .attr('stroke', (d) => (d.data._upToTheRootHighlighted ? '#E27396' : '#E4E2E9'))
@@ -179,7 +159,6 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
   </defs>
   `;
   },
-  /* You can update connections with custom styling using this function */
   connectionsUpdate: function () {
     d3.select<BaseType, OrgChartConnection>(this)
       .attr('stroke', () => '#E27396')
@@ -189,21 +168,11 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
       .attr('marker-start', (d) => `url(#${d.from + '_' + d.to})`)
       .attr('marker-end', (d) => `url(#arrow-${d.from + '_' + d.to})`);
   },
-  // Link generator for connections
   linkGroupArc: d3
     .linkHorizontal<any, D3Node<TData>>()
     .x((d: D3Node<TData>) => d.x)
     .y((d: D3Node<TData>) => d.y),
 
-  /*
-   *   You can customize/offset positions for each node and link by overriding these functions
-   *   For example, suppose you want to move link y position 30 px bellow in top layout. You can do it like this:
-   *   ```javascript
-   *   const layout = chart.layoutBindings();
-   *   layout.top.linkY = node => node.y + 30;
-   *   chart.layoutBindings(layout);
-   *   ```
-   */
   layoutBindings: {
     left: {
       nodeLeftX: () => 0,
@@ -216,9 +185,9 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
       linkJoinY: (node) => node.y,
       linkX: (node) => node.x,
       linkY: (node) => node.y,
-      linkCompactXStart: (node) => node.x + node.width / 2, //node.x + (node.compactEven ? node.width / 2 : -node.width / 2),
+      linkCompactXStart: (node) => node.x + node.width / 2,
       linkCompactYStart: (node) => node.y + (node.compactEven ? node.height / 2 : -node.height / 2),
-      compactLinkMidX: (node) => node.firstCompactNode?.x ?? 0, // node.firstCompactNode.x + node.firstCompactNode.flexCompactDim[0] / 4 + state.compactMarginPair(node) / 4,
+      compactLinkMidX: (node) => node.firstCompactNode?.x ?? 0,
       compactLinkMidY: (node, state) =>
         (node.firstCompactNode?.y ?? 0) +
         (node.firstCompactNode?.flexCompactDim![0] ?? 0) / 4 +
@@ -344,9 +313,9 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
       linkParentY: (node) => node.parent?.y ?? 0,
       buttonX: () => 0,
       buttonY: (node) => node.height / 2,
-      linkCompactXStart: (node) => node.x - node.width / 2, //node.x + (node.compactEven ? node.width / 2 : -node.width / 2),
+      linkCompactXStart: (node) => node.x - node.width / 2,
       linkCompactYStart: (node) => node.y + (node.compactEven ? node.height / 2 : -node.height / 2),
-      compactLinkMidX: (node) => node.firstCompactNode?.x ?? 0, // node.firstCompactNode.x + node.firstCompactNode.flexCompactDim[0] / 4 + state.compactMarginPair(node) / 4,
+      compactLinkMidX: (node) => node.firstCompactNode?.x ?? 0,
       compactLinkMidY: (node, state) =>
         (node.firstCompactNode?.y ?? 0) +
         (node.firstCompactNode?.flexCompactDim![0] ?? 0) / 4 +
