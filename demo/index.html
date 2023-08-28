@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>OrgChart</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://unpkg.com/html2canvas@1.1.4/dist/html2canvas.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"></script>
+
+    <style>
+      .chart-container {
+        padding-top: 10px;
+        height: 1200px;
+        background-color: white;
+      }
+
+      .node.dragging .node-rect {
+        stroke: #ff6363;
+        stroke-width: 10;
+        fill: #fff;
+      }
+
+      .node:not(.dragging).drop-over .node-rect {
+        stroke: #ccc;
+        stroke-width: 10;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="action-buttons" style="margin: 0 100px">
+      <button onclick='chart.setExpanded("103").render()'>Expand #103</button>
+      <button onclick='chart.setExpanded("103",false).render()'>Collapse #103</button>
+      <button
+        onclick='chart.addNode({id:"root child",parentId:"100",name:"test-name",position:"test-position",_centered:true})'
+      >
+        Add node as roots' child
+      </button>
+      <button onclick='chart.removeNode("120")'>Remove #120</button>
+      <button onclick="chart.fit()">Fit</button>
+      <button onclick='chart.setOptions({layout: ["right","bottom","left","top"][index++%4]}).render().fit()'>
+        Swap Layouts
+      </button>
+
+      <button onclick='chart.setCentered("134").render()'>Center #134</button>
+      <button onclick='chart.setHighlighted("134").render()'>Highlight #134</button>
+      <button onclick='chart.setUpToTheRootHighlighted("134").render()'>Highlight #134 to root</button>
+      <button onclick="chart.clearHighlighting()">Clear highlighting</button>
+      <button onclick="chart.fullscreen()">Full Screen</button>
+      <button onclick="chart.zoom(1)">Zoom Reset</button>
+      <button onclick="chart.zoomIn()">Zoom In</button>
+      <button onclick="chart.zoomOut()">Zoom Out</button>
+      <button onclick="chart.exportImg()">Export Current Image</button>
+      <button onclick="chart.exportImg({full:true})">Export Export Full Image</button>
+      <button onclick="chart.exportSvg()">Export SVG</button>
+      <button onclick="chart.expandAll()">Expand All</button>
+      <button onclick="chart.collapseAll()">Collapse All</button>
+      <button onclick='chart.setOptions({connections:[{from:"145",to:"201",label:"Conflicts of interest"}]}).render()'>
+        Multi Node Connections
+      </button>
+      <button onclick="() => downloadPdf()">Download PDF</button>
+    </div>
+
+    <div class="chart-container"></div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <script>
+      let index = 0;
+      let chart;
+      d3.csv('demo/data.csv').then((dataFlattened) => {
+        chart = new OrgChart({
+          container: document.querySelector('.chart-container'),
+          data: dataFlattened,
+          expandLevel: 2,
+          nodeHeight: () => 85 + 25,
+          nodeWidth: () => 220 + 2,
+          childrenMargin: () => 50,
+          compactNoChildren: true,
+          onNodeClick: () => console.log('ok'),
+          onNodeButtonClick: () => console.log("node button click"),
+          compactMarginBetween: () => 35,
+          compactMarginPair: () => 30,
+          neighbourMargin: () => 40,
+          dragNDrop: true,
+          onNodeDrop: function (sourceNodeData, targetNodeData) {
+            console.log(sourceNodeData, targetNodeData);
+            return true;
+          },
+          isNodeDraggable: () => true,
+          isNodeDroppable: () => true,
+          layoutBindings: {
+            top: {
+              linkY: (node) => node.y + 0,
+              linkCompactYStart: (node) => node.y + node.height / 2 + 15,
+            },
+          },
+        });
+
+        chart.render();
+      });
+
+      function downloadPdf() {
+        chart.exportImg({
+          save: false,
+          onLoad: (base64) => {
+            var pdf = new jspdf.jsPDF();
+            var img = new Image();
+            img.src = base64;
+            img.onload = function () {
+              pdf.addImage(img, 'JPEG', 5, 5, 595 / 3, ((img.height / img.width) * 595) / 3);
+              pdf.save('chart.pdf');
+            };
+          },
+        });
+      }
+    </script>
+  </body>
+</html>
