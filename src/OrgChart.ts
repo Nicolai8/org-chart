@@ -950,8 +950,15 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   /**
    * Toggle children on click
    */
-  private onButtonClick(_: MouseEvent, d: D3Node<TData>) {
+  private onButtonClick(e: MouseEvent, d: D3Node<TData>) {
     const attrs = this.getOptions();
+
+    attrs.onNodeButtonClick?.(e, d);
+
+    if (e.defaultPrevented) {
+      return;
+    }
+
     if (attrs.setActiveNodeCentered) {
       d.data._centered = true;
       d.data._centeredWithDescendants = true;

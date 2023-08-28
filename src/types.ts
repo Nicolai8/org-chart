@@ -229,6 +229,7 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
    * Node expand & collapse button content and styling. You can access same helper methods as above
    */
   buttonContent: ({ node, state }: { node: D3Node<TData>; state: OrgChartOptions<TData> }) => string;
+  onNodeButtonClick?: (e: MouseEvent, data: D3Node<TData>) => void;
 
   /**
    * You can access and modify actual link DOM element in runtime using this method.
