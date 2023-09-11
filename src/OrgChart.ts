@@ -376,10 +376,11 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       node.compactEven = undefined;
       node.flexCompactDim = undefined;
       node.firstCompactNode = undefined;
+      node.compactNoChildren = undefined;
     });
     root.eachBefore((node) => {
       if (node.children && node.children.length > 1) {
-        const compactChildren = node.children.filter((d) => !d.children);
+        const compactChildren = attrs.compactNoChildren ? node.children : node.children.filter((d) => !d.children);
 
         if (compactChildren.length < 2) return;
 
@@ -426,7 +427,8 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
           const rowSize = d3.max(compactChildren, attrs.layoutBindings[attrs.layout].compactDimension.sizeRow) ?? 0;
           compactChildren[0].firstCompact = true;
 
-          if (node.data._directSubordinates === node.data._totalSubordinates) {
+          node.compactNoChildren = compactChildren.every((d) => !attrs.isNodeButtonVisible(d));
+          if (node.compactNoChildren) {
             compactChildren.forEach((node, i) => {
               node.firstCompactNode = compactChildren[0];
               if (i === 0) {
@@ -513,7 +515,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
         };
 
         if (attrs.compactNoChildren) {
-          if (node.data._directSubordinates === node.data._totalSubordinates) {
+          if (node.compactNoChildren) {
             setCompactAsGroupX();
             setCompactAsGroupY();
           }
@@ -742,14 +744,9 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
         return attrs.nodeWidth(d) + attrs.compactNoChildrenMargin * 2;
       })
       .attr('height', (d) => {
-        const { data, children } = d;
+        const { data, children, compactNoChildren } = d;
 
-        if (
-          children &&
-          children.length > 1 &&
-          attrs.compactNoChildren &&
-          data._directSubordinates === data._totalSubordinates
-        ) {
+        if (children && children.length > 1 && attrs.compactNoChildren && compactNoChildren) {
           const compactAsGroupChildrenSize =
             d3.sum(
               children,
@@ -877,25 +874,15 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
         return `translate(${x},${y})`;
       })
       .attr('display', (d) => {
-        const { children, data } = d;
+        const { children, data, compactNoChildren } = d;
 
-        return children &&
-          children.length > 1 &&
-          attrs.compactNoChildren &&
-          data._directSubordinates === data._totalSubordinates
-          ? null
-          : 'none';
+        return children && children.length > 1 && compactNoChildren ? null : 'none';
       });
 
     nodeUpdate.select('.node-compact-rect').attr('height', (d) => {
-      const { children, data } = d;
+      const { children, data, compactNoChildren } = d;
 
-      if (
-        children &&
-        children.length > 1 &&
-        attrs.compactNoChildren &&
-        data._directSubordinates === data._totalSubordinates
-      ) {
+      if (children && children.length > 1 && compactNoChildren) {
         const compactAsGroupChildrenSize =
           d3.sum(
             children,

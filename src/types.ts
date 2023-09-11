@@ -14,10 +14,12 @@ declare module 'd3-selection' {
   }
 }
 
-export type OrgChartDataItem<TData = {
-  id: string;
-  parentId?: string;
-}> = TData & {
+export type OrgChartDataItem<
+  TData = {
+    id: string;
+    parentId?: string;
+  },
+> = TData & {
   _highlighted?: boolean;
   _upToTheRootHighlighted?: boolean;
   _centeredWithDescendants?: boolean;
@@ -40,11 +42,27 @@ export type D3Node<TData> = D3NodeDimensions &
   HierarchyNode<TData> & {
     x0: number;
     y0: number;
+    /**
+     * true if it's first node of compact node
+     */
     firstCompact?: boolean;
+    /**
+     * first compact node reference
+     */
     firstCompactNode?: D3Node<TData>;
+    /**
+     * node compact dimensions. It's [0, 0] for non-first child
+     */
     flexCompactDim?: [number, number];
     compactEven?: boolean;
+    /**
+     * row number in compact mode
+     */
     row?: number;
+    /**
+     * true if all children nodes doesn't have its own children
+     */
+    compactNoChildren?: boolean;
     _children?: D3Node<TData>[];
   };
 
@@ -153,7 +171,7 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
   // Configure margin between two siblings, use with caution, it is better to have the same value set for all nodes
   siblingsMargin: (d: D3Node<TData>) => number;
   // Configure margin between parent and children, use with caution, it is better to have the same value set for all nodes
-  childrenMargin: (d: D3Node<TData>) => number;// Configure expand & collapse button width
+  childrenMargin: (d: D3Node<TData>) => number; // Configure expand & collapse button width
   // When correcting links which is not working for safari
   linkYOffset: number;
 
@@ -236,7 +254,9 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
    */
   linkUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
 
-  compactNoChildrenUpdate: (compactGroupRect: Selection<BaseType, FlextreeD3Node<TData>, SVGGraphicsElement, string>) => void;
+  compactNoChildrenUpdate: (
+    compactGroupRect: Selection<BaseType, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
+  ) => void;
   /**
    * Defining arrows with markers for connections
    */
