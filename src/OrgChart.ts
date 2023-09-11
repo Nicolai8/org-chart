@@ -201,6 +201,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
 
     return this;
   }
+
   addNodes(nodesToAdd: TData[]) {
     const attrs = this.getOptions();
 
@@ -426,12 +427,10 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
           compactChildren[0].firstCompact = true;
 
           if (node.data._directSubordinates === node.data._totalSubordinates) {
-            node.firstCompactNode = compactChildren[0];
-
             compactChildren.forEach((node, i) => {
               node.firstCompactNode = compactChildren[0];
               if (i === 0) {
-                node.flexCompactDim = [columnSize, rowSize];
+                node.flexCompactDim = [columnSize, rowSize * compactChildren.length];
               } else {
                 node.flexCompactDim = [0, 0];
               }
