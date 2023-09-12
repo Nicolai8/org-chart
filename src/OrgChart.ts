@@ -84,6 +84,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
           const height = attrs.nodeHeight(node as D3Node<TData>);
           const siblingsMargin = attrs.siblingsMargin(node as D3Node<TData>);
           const childrenMargin = attrs.childrenMargin(node as D3Node<TData>);
+
           return attrs.layoutBindings[attrs.layout].nodeFlexSize({
             state: attrs,
             node: node as D3Node<TData>,
@@ -424,15 +425,23 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
 
         const calculateCompactAsGroupDimension = () => {
           const columnSize = maxColumnDimension;
-          const rowSize = d3.max(compactChildren, attrs.layoutBindings[attrs.layout].compactDimension.sizeRow) ?? 0;
           compactChildren[0].firstCompact = true;
 
           node.compactNoChildren = compactChildren.every((d) => !attrs.isNodeButtonVisible(d));
           if (node.compactNoChildren) {
+            const widthWithPaddings = columnSize + 2 * attrs.compactNoChildrenMargin;
+            const heightWithPaddings =
+              2 * attrs.compactNoChildrenMargin +
+              d3.sum(
+                compactChildren,
+                (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d) + attrs.compactMarginBetween(d),
+              ) -
+              attrs.compactMarginBetween(node);
+
             compactChildren.forEach((node, i) => {
               node.firstCompactNode = compactChildren[0];
               if (i === 0) {
-                node.flexCompactDim = [columnSize, rowSize * compactChildren.length];
+                node.flexCompactDim = [widthWithPaddings, heightWithPaddings];
               } else {
                 node.flexCompactDim = [0, 0];
               }
