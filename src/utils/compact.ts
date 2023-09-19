@@ -1,6 +1,7 @@
 import { D3Node, OrgChartDataItem, OrgChartOptions } from '../types';
 import { d3 } from '../constants';
 import { getNumber } from './core';
+import { getDirectChildren } from './children';
 
 const groupBy = <T>(
   array: Array<T>,
@@ -32,8 +33,10 @@ export const calculateCompactFlexDimensions = <TData extends OrgChartDataItem = 
     node.compactEven = undefined;
     node.flexCompactDim = undefined;
     node.firstCompactNode = undefined;
-    node.compactNoChildren = undefined;
-    node.data._compactExpanded = false;
+    if (options.compactNoChildren) {
+      const children = getDirectChildren(node);
+      node.compactNoChildren = children.length > 0 && children.every((d) => !options.isNodeButtonVisible(d));
+    }
   });
   root.eachBefore((node) => {
     if (node.children && node.children.length > 1) {
@@ -61,7 +64,8 @@ export const calculateCompactFlexDimensions = <TData extends OrgChartDataItem = 
           (reducedGroup) =>
             d3.max(
               reducedGroup,
-              (d) => options.layoutBindings[options.layout].compactDimension.sizeRow(d) + options.compactMarginBetween(d),
+              (d) =>
+                options.layoutBindings[options.layout].compactDimension.sizeRow(d) + options.compactMarginBetween(d),
             ) ?? 0,
         );
         const rowSize = d3.sum(rowsMapNew.map((v) => v[1]));
@@ -83,14 +87,14 @@ export const calculateCompactFlexDimensions = <TData extends OrgChartDataItem = 
         const columnSize = maxColumnDimension;
         compactChildren[0].firstCompact = true;
 
-        node.compactNoChildren = compactChildren.every((d) => !options.isNodeButtonVisible(d));
         if (node.compactNoChildren) {
           const widthWithPaddings = columnSize + 2 * options.compactNoChildrenMargin;
           const heightWithPaddings =
             2 * options.compactNoChildrenMargin +
             d3.sum(
               compactChildren,
-              (d) => options.layoutBindings[options.layout].compactDimension.sizeRow(d) + options.compactMarginBetween(d),
+              (d) =>
+                options.layoutBindings[options.layout].compactDimension.sizeRow(d) + options.compactMarginBetween(d),
             ) -
             options.compactMarginBetween(node);
 
@@ -133,7 +137,8 @@ export const calculateCompactFlexPositions = <TData extends OrgChartDataItem = O
           if (i === 0) fch.x -= getNumber(fch.flexCompactDim?.[0]) / 2;
           if (i && (i % 2) - 1)
             child.x = fch.x + getNumber(fch.flexCompactDim?.[0]) * 0.25 - options.compactMarginPair(child) / 4;
-          else if (i) child.x = fch.x + getNumber(fch.flexCompactDim?.[0]) * 0.75 + options.compactMarginPair(child) / 4;
+          else if (i)
+            child.x = fch.x + getNumber(fch.flexCompactDim?.[0]) * 0.75 + options.compactMarginPair(child) / 4;
         });
         const centerX = fch.x + getNumber(fch.flexCompactDim?.[0]) * 0.5;
         fch.x = fch.x + getNumber(fch.flexCompactDim?.[0]) * 0.25 - options.compactMarginPair(fch) / 4;

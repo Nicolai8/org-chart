@@ -17,13 +17,13 @@ import { D3DragEvent, DraggedElementBaseType } from 'd3-drag';
 import merge from 'lodash.merge';
 import { calculateCompactFlexDimensions, calculateCompactFlexPositions } from './utils/compact';
 import {
-  collapse,
+  collapse, collapseCompactLevel,
   collapseLevel,
   expand,
   expandLevel,
   expandNodesWithExpandedFlag,
-  getNodeChildren,
-} from './utils/children';
+  getNodeChildren
+} from "./utils/children";
 import { downloadImage, toDataURL } from './utils/image';
 import { renderOrUpdateNodes, restyleForeignObjectElements } from './render/nodes';
 import { renderOrUpdateLinks } from './render/links';
@@ -260,6 +260,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       this.root,
       node,
       nodesSelection,
+      this.onNodeClick.bind(this),
       this.onButtonClick.bind(this),
       this.onCompactGroupCollapseButtonClick.bind(this),
       this.svg!,
@@ -398,6 +399,18 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     renderOrUpdateConnections(attrs, connectionsSelection, node);
   }
 
+  private onNodeClick(_: MouseEvent, node: D3Node<TData>) {
+    const { data } = node;
+
+    if (data._type === 'group-toggle' && node.parent) {
+      expandLevel(node.parent, true);
+      this.update(node.parent);
+      return;
+    }
+
+    this.options.onNodeClick(data);
+  }
+
   /**
    * Trigger onNodeButtonClick and/or toggle children
    */
@@ -427,7 +440,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   private onCompactGroupCollapseButtonClick(e: MouseEvent, d: D3Node<TData>) {
     e.stopPropagation();
 
-    collapseLevel(d);
+    collapseCompactLevel(d);
 
     this.update(d);
   }
@@ -750,11 +763,10 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       .call(
         d3
           .drag<DraggedElementBaseType, D3Node<TData>>()
-          .clickDistance(100)
-          .filter((e) => !e.target.closest('.node-button-g'))
+          .filter((e) => !e.target.closest('.node-button-g') && !e.target.closest('.node-foreign-object'))
           .on('start', function (e: D3DragEvent<DraggedElementBaseType, D3Node<TData>, D3Node<TData>>) {
-            const draggingElement = this as DraggedElementBaseType;
-            self.dragStarted(draggingElement, e);
+              const draggingElement = this as DraggedElementBaseType;
+              self.dragStarted(draggingElement, e);
           })
           .on(
             'drag',

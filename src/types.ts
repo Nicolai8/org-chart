@@ -32,6 +32,7 @@ export type OrgChartDataItem<
    */
   _compactExpanded: boolean;
   _toDelete?: boolean;
+  _type?: 'normal' | 'group-toggle';
 };
 
 export type D3NodeDimensions = {

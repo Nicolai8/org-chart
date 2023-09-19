@@ -29,6 +29,7 @@ export const restyleForeignObjectElements = <TData extends OrgChartDataItem = Or
 const renderAndUpdateForeignObjectElements = <TData extends OrgChartDataItem = OrgChartDataItem>(
   options: OrgChartOptions<TData>,
   nodeWrapperGroup: Selection<SVGGraphicsElement, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
+  onNodeClick: (e: MouseEvent, d: D3Node<TData>) => void,
   svg: Selection<SVGElement, string, any, any>,
 ) => {
   // Add foreignObject element inside rectangle
@@ -38,7 +39,15 @@ const renderAndUpdateForeignObjectElements = <TData extends OrgChartDataItem = O
       selector: 'node-foreign-object',
       data: (d) => [d],
     })
-    .style('overflow', 'visible');
+    .style('overflow', 'visible')
+    .attr('cursor', 'pointer')
+    .on('click', (event: any, node: FlextreeD3Node<TData>) => {
+      if (event.target.classList.contains('node-button-foreign-object')) {
+        return;
+      }
+
+      onNodeClick(event, node);
+    });
 
   // Add foreign object
   fo.patternify({
@@ -197,9 +206,9 @@ const updateNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
       return `translate(${x},${y})`;
     })
     .attr('display', (d) => {
-      const { children, compactNoChildren } = d;
+      const { data, compactNoChildren } = d;
 
-      return children && children.length > 1 && compactNoChildren ? null : 'none';
+      return compactNoChildren && data._expanded ? null : 'none';
     });
 
   compactGroup.select('.node-compact__rect').attr('height', (d) => {
@@ -217,10 +226,23 @@ const updateNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
     return options.nodeHeight(d) + options.compactNoChildrenMargin * 2;
   });
 
-  compactGroup.select('.node-compact__toggle-btn').attr('transform', (d) => {
-    const { width } = d;
-    const x = width + options.compactNoChildrenMargin * 2 + options.compactNoChildrenToggleBtnMargin;
-    return `translate(${x},0)`;
+  compactGroup
+    .select('.node-compact__toggle-btn')
+    .attr('transform', (d) => {
+      const { width } = d;
+      const x = width + options.compactNoChildrenMargin * 2 + options.compactNoChildrenToggleBtnMargin;
+      return `translate(${x},0)`;
+    })
+    .attr('display', (d) => {
+      const { data } = d;
+
+      return data._compactExpanded ? null : 'none';
+    });
+
+  compactGroup.select('.node-compact__toggle-btn svg').attr('display', (d) => {
+    const { data } = d;
+
+    return data._compactExpanded ? null : 'none';
   });
 };
 
@@ -229,6 +251,7 @@ export const renderOrUpdateNodes = <TData extends OrgChartDataItem = OrgChartDat
   root: D3Node<TData> | undefined,
   node: D3Node<TData>,
   nodesSelection: Selection<SVGGraphicsElement, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
+  onNodeClick: (e: MouseEvent, d: D3Node<TData>) => void,
   onButtonClick: (e: MouseEvent, d: D3Node<TData>) => void,
   onCompactGroupToggleButtonClick: (e: MouseEvent, d: D3Node<TData>) => void,
   svg: Selection<SVGElement, string, any, any>,
@@ -247,15 +270,6 @@ export const renderOrUpdateNodes = <TData extends OrgChartDataItem = OrgChartDat
       const xj = options.layoutBindings[options.layout].nodeJoinX({ x: x0, y: y0, width, height });
       const yj = options.layoutBindings[options.layout].nodeJoinY({ x: x0, y: y0, width, height });
       return `translate(${xj},${yj})`;
-    })
-    .attr('cursor', 'pointer')
-    .on('click', (event: any, node: FlextreeD3Node<TData>) => {
-      const { data } = node;
-      if (event.target.classList.contains('node-button-foreign-object')) {
-        return;
-      }
-
-      options.onNodeClick(data);
     });
 
   renderNodeCompact(options, nodeEnter, onCompactGroupToggleButtonClick);
@@ -270,7 +284,7 @@ export const renderOrUpdateNodes = <TData extends OrgChartDataItem = OrgChartDat
     data: (d) => [d],
   });
 
-  renderAndUpdateForeignObjectElements(options, nodeWrapperGroup, svg);
+  renderAndUpdateForeignObjectElements(options, nodeWrapperGroup, onNodeClick, svg);
 
   renderNodeButton(options, nodeWrapperGroup, onButtonClick);
 
