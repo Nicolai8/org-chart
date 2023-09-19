@@ -2,6 +2,7 @@ import { D3Node, FlextreeD3Node, OrgChartDataItem, OrgChartOptions } from '../ty
 import { d3 } from '../constants';
 import { isEdge } from '../utils/core';
 import { BaseType, Selection } from 'd3-selection';
+import collapseBtn from '../icons/collapse-btn.svg';
 
 /**
  * This function basically redraws visible graph, based on nodes state
@@ -61,7 +62,7 @@ const renderNodeButton = <TData extends OrgChartDataItem = OrgChartDataItem>(
       selector: 'node-button-g',
       data: (d) => [d],
     })
-    .on('click', (event, d) => onButtonClick(event, d));
+    .on('click', onButtonClick);
 
   nodeButtonGroups
     .patternify({
@@ -136,18 +137,19 @@ const updateNodeButton = <TData extends OrgChartDataItem = OrgChartDataItem>(
 const renderNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
   options: OrgChartOptions<TData>,
   nodeEnter: Selection<SVGGraphicsElement, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
+  onCompactGroupToggleButtonClick: (e: MouseEvent, d: D3Node<TData>) => void,
 ) => {
   // Add Node rect for compactNoChildren mode
   const nodeCompactGroup = nodeEnter.patternify({
     tag: 'g',
-    selector: 'node-compact-g',
+    selector: 'node-compact',
     data: (d) => [d],
   });
 
   const nodeCompactGroupRect = nodeCompactGroup
     .patternify({
       tag: 'rect',
-      selector: 'node-compact-rect',
+      selector: 'node-compact__rect',
       data: (d) => [d],
     })
     .attr('pointer-events', 'none')
@@ -170,6 +172,14 @@ const renderNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
       return options.nodeHeight(d) + options.compactNoChildrenMargin * 2;
     });
 
+  nodeCompactGroup
+    .patternify({
+      tag: 'g',
+      selector: 'node-compact__toggle-btn',
+    })
+    .html(options.compactNoChildrenToggleBtnIcon || collapseBtn)
+    .on('click', onCompactGroupToggleButtonClick);
+
   options.compactNoChildrenUpdate(nodeCompactGroupRect);
 };
 
@@ -177,8 +187,8 @@ const updateNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
   options: OrgChartOptions<TData>,
   nodeUpdate: Selection<SVGGraphicsElement, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
 ) => {
-  nodeUpdate
-    .select('.node-compact-g')
+  const compactGroup = nodeUpdate
+    .select('.node-compact')
     .attr('transform', (d) => {
       const { height } = d;
       // todo: set to correct based on the layout
@@ -187,12 +197,12 @@ const updateNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
       return `translate(${x},${y})`;
     })
     .attr('display', (d) => {
-      const { children, data, compactNoChildren } = d;
+      const { children, compactNoChildren } = d;
 
       return children && children.length > 1 && compactNoChildren ? null : 'none';
     });
 
-  nodeUpdate.select('.node-compact-rect').attr('height', (d) => {
+  compactGroup.select('.node-compact__rect').attr('height', (d) => {
     const { children, compactNoChildren } = d;
 
     if (children && children.length > 1 && compactNoChildren) {
@@ -206,6 +216,12 @@ const updateNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
 
     return options.nodeHeight(d) + options.compactNoChildrenMargin * 2;
   });
+
+  compactGroup.select('.node-compact__toggle-btn').attr('transform', (d) => {
+    const { width } = d;
+    const x = width + options.compactNoChildrenMargin * 2 + options.compactNoChildrenToggleBtnMargin;
+    return `translate(${x},0)`;
+  });
 };
 
 export const renderOrUpdateNodes = <TData extends OrgChartDataItem = OrgChartDataItem>(
@@ -214,6 +230,7 @@ export const renderOrUpdateNodes = <TData extends OrgChartDataItem = OrgChartDat
   node: D3Node<TData>,
   nodesSelection: Selection<SVGGraphicsElement, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
   onButtonClick: (e: MouseEvent, d: D3Node<TData>) => void,
+  onCompactGroupToggleButtonClick: (e: MouseEvent, d: D3Node<TData>) => void,
   svg: Selection<SVGElement, string, any, any>,
 ) => {
   const { x0, y0, x = 0, y = 0, width, height } = node;
@@ -241,7 +258,7 @@ export const renderOrUpdateNodes = <TData extends OrgChartDataItem = OrgChartDat
       options.onNodeClick(data);
     });
 
-  renderNodeCompact(options, nodeEnter);
+  renderNodeCompact(options, nodeEnter, onCompactGroupToggleButtonClick);
 
   // Add Node wrapper
   const nodeWrapperGroup = nodeEnter;

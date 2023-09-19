@@ -33,6 +33,7 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
   compact: true,
   compactNoChildren: false,
   compactNoChildrenMargin: 15,
+  compactNoChildrenToggleBtnMargin: 10,
   compactMarginPair: () => 100,
   compactMarginBetween: () => 20,
 

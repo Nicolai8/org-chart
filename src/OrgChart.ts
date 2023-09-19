@@ -23,12 +23,11 @@ import {
   expandLevel,
   expandNodesWithExpandedFlag,
   getNodeChildren,
-  isCollapsed,
 } from './utils/children';
 import { downloadImage, toDataURL } from './utils/image';
-import { renderOrUpdateNodes, restyleForeignObjectElements } from "./render/nodes";
-import { renderOrUpdateLinks } from "./render/links";
-import { renderOrUpdateConnections } from "./render/connections";
+import { renderOrUpdateNodes, restyleForeignObjectElements } from './render/nodes';
+import { renderOrUpdateLinks } from './render/links';
+import { renderOrUpdateConnections } from './render/connections';
 
 export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   private id = `${LibName}_${createRandomString()}`;
@@ -243,8 +242,9 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     // Get all links
     const links = nodes.slice(1);
     // render links
-    const linksSelection = this.linksWrapper!.selectAll<SVGPathElement, FlextreeD3Node<TData>>('path.link').data(links, (d) =>
-      this.getNodeId(d.data),
+    const linksSelection = this.linksWrapper!.selectAll<SVGPathElement, FlextreeD3Node<TData>>('path.link').data(
+      links,
+      (d) => this.getNodeId(d.data),
     );
     renderOrUpdateLinks(attrs, linksSelection, node);
 
@@ -255,7 +255,15 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       nodes,
       ({ data }) => this.getNodeId(data),
     );
-    renderOrUpdateNodes(attrs, this.root, node, nodesSelection, this.onButtonClick.bind(this), this.svg!)
+    renderOrUpdateNodes(
+      attrs,
+      this.root,
+      node,
+      nodesSelection,
+      this.onButtonClick.bind(this),
+      this.onCompactGroupCollapseButtonClick.bind(this),
+      this.svg!,
+    );
 
     // Store the old positions for transition.
     nodes.forEach((d) => {
@@ -322,12 +330,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       return this;
     }
 
-    nodesToAdd.forEach((nodeToAdd) => {
-      if (nodeToAdd._centered && !nodeToAdd._visible) {
-        nodeToAdd._visible = true;
-      }
-      attrs.data?.push(nodeToAdd);
-    });
+    attrs.data?.push(...nodesToAdd);
 
     attrs.onDataChange(attrs.data || []);
 
@@ -366,10 +369,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     return this;
   }
 
-  private createAndUpdateConnections(
-    nodes: FlextreeD3Node<TData>[],
-    node: D3Node<TData>,
-  ) {
+  private createAndUpdateConnections(nodes: FlextreeD3Node<TData>[], node: D3Node<TData>) {
     const attrs = this.getOptions();
 
     const allNodesMap: Record<string, D3Node<TData>> = {};
@@ -399,7 +399,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   }
 
   /**
-   * Toggle children on click
+   * Trigger onNodeButtonClick and/or toggle children
    */
   private onButtonClick(e: MouseEvent, d: D3Node<TData>) {
     const options = this.getOptions();
@@ -415,11 +415,19 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       d.data._centeredWithDescendants = true;
     }
 
-    if (isCollapsed(d)) {
-      expandLevel(d);
-    } else {
+    if (d.data._expanded) {
       collapseLevel(d);
+    } else {
+      expandLevel(d);
     }
+
+    this.update(d);
+  }
+
+  private onCompactGroupCollapseButtonClick(e: MouseEvent, d: D3Node<TData>) {
+    e.stopPropagation();
+
+    collapseLevel(d);
 
     this.update(d);
   }
@@ -558,7 +566,10 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       return this;
     }
     node.data._centered = true;
-    node.data._visible = true;
+    if (node.parent) {
+      node.parent.data._expanded = true;
+    }
+
     return this;
   }
 
@@ -569,8 +580,11 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       return this;
     }
     node.data._highlighted = true;
-    node.data._visible = true;
+    if (node.parent) {
+      node.parent.data._expanded = true;
+    }
     node.data._centered = true;
+
     return this;
   }
 
@@ -581,8 +595,10 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       return this;
     }
     node.data._upToTheRootHighlighted = true;
-    node.data._visible = true;
-    node.ancestors().forEach((d) => (d.data._upToTheRootHighlighted = true));
+    node.ancestors().forEach((d) => {
+      d.data._expanded = true;
+      d.data._upToTheRootHighlighted = true;
+    });
     return this;
   }
 
@@ -695,18 +711,19 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       console.warn(`${LibName} setExpanded: Node with id (${id}) not found in the tree`);
       return this;
     }
-    node.data._visible = expandedFlag;
+    node.data._expanded = expandedFlag;
+
     return this;
   }
 
   expandAll() {
-    this.allNodes.forEach((d) => (d.data._visible = true));
+    this.allNodes.forEach((d) => (d.data._expanded = true));
     this.render();
     return this;
   }
 
   collapseAll() {
-    this.allNodes.forEach((d) => (d.data._visible = false));
+    this.allNodes.forEach((d) => (d.data._expanded = false));
     this.render();
     return this;
   }
@@ -763,7 +780,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
 
     const draggingNode = d3.select<DraggedElementBaseType, D3Node<TData>>(draggingEl).classed('dragging', true);
     const draggingElClone = draggingNode.clone(true);
-    (draggingElClone.select('.node-compact-g').node() as HTMLElement).remove();
+    (draggingElClone.select('.node-compact').node() as HTMLElement).remove();
     this.draggedNodesWrapper!.node()!.appendChild(draggingElClone.node()!);
     draggingNode.selectAll('.node-foreign-object, .node-button-g, .node-rect').attr('opacity', 0);
     orgChartInstance.dragData = {

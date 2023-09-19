@@ -25,8 +25,12 @@ export type OrgChartDataItem<
   _centeredWithDescendants?: boolean;
   _directSubordinates?: number;
   _totalSubordinates?: number;
-  _visible?: boolean;
   _centered?: boolean;
+  _expanded?: boolean;
+  /**
+   * true if compact "no children" is expanded
+   */
+  _compactExpanded: boolean;
   _toDelete?: boolean;
 };
 
@@ -62,10 +66,6 @@ export type D3Node<TData> = D3NodeDimensions &
      * true if all children nodes doesn't have its own children
      */
     compactNoChildren?: boolean;
-    /**
-     * true if compact "no children" is expanded
-     */
-    compactNoChildrenExpanded?: boolean;
     _children?: D3Node<TData>[];
   };
 
@@ -199,6 +199,7 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
    */
   compactNoChildren: boolean;
   compactNoChildrenMargin: number;
+  compactNoChildrenToggleBtnMargin: number;
   // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
   compactMarginPair: (d: D3Node<TData>) => number;
   // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
@@ -260,6 +261,7 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
   compactNoChildrenUpdate: (
     compactGroupRect: Selection<BaseType, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
   ) => void;
+  compactNoChildrenToggleBtnIcon?: string;
   /**
    * Defining arrows with markers for connections
    */

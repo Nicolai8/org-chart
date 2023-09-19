@@ -37,24 +37,25 @@ export const expand = <TData extends OrgChartDataItem = OrgChartDataItem>(node: 
   node._children = undefined;
 };
 
-export const isCollapsed = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
-  return !!node._children;
-};
-
 export const collapseLevel = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
-  if (node.children) {
-    node.children.forEach(({ data }) => (data._visible = false));
-  }
-
   collapse(node);
+
+  node.data._compactExpanded = false;
+  node.data._expanded = false;
 };
 
 export const expandLevel = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
-  expand(node);
-
-  if (node.children) {
-    node.children.forEach(({ data }) => (data._visible = true));
+  if (node.compactNoChildren && !node.data._compactExpanded) {
+    expandCompactLevel(node);
+    return;
   }
+
+  expand(node);
+  node.data._expanded = true;
+};
+
+const expandCompactLevel = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
+  node.data._compactExpanded = true;
 };
 
 /**
@@ -63,14 +64,15 @@ export const expandLevel = <TData extends OrgChartDataItem = OrgChartDataItem>(n
 export const expandNodesWithExpandedFlag = <TData extends OrgChartDataItem = OrgChartDataItem>(
   allNodes: Array<D3Node<TData>>,
 ) => {
-  const visibleNodes = allNodes.filter((node) => node.data._visible);
+  const expandedNodes = allNodes.filter((node) => node.data._expanded);
 
-  visibleNodes.forEach((d) => {
+  expandedNodes.forEach((d) => {
+    expandLevel(d);
+
     let parent = d.parent;
 
-    while (parent && isCollapsed(parent)) {
-      parent.data._visible = true;
-      expand(parent);
+    while (parent && !parent.data._expanded) {
+      expandLevel(parent);
 
       parent = parent.parent;
     }

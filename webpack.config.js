@@ -24,12 +24,16 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(m|j|t)s$/,
+        test: /\.([mjt])s$/,
         exclude: /(node_modules|bower_components)/,
         use: {
           loader: 'babel-loader',
         },
       },
+      {
+        test: /\.svg/,
+        type: 'asset/source'
+      }
     ],
   },
   plugins: [

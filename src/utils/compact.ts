@@ -33,6 +33,7 @@ export const calculateCompactFlexDimensions = <TData extends OrgChartDataItem = 
     node.flexCompactDim = undefined;
     node.firstCompactNode = undefined;
     node.compactNoChildren = undefined;
+    node.data._compactExpanded = false;
   });
   root.eachBefore((node) => {
     if (node.children && node.children.length > 1) {
