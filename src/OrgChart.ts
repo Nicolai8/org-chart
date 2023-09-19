@@ -1,6 +1,6 @@
 import { getChartOptions } from './options';
 import { LibName, d3 } from './constants';
-import { downloadImage, isEdge, groupBy, toDataURL, createRandomString, getNumber } from './utils';
+import { isEdge, createRandomString, getNumber } from './utils/core';
 import {
   D3Node,
   ExportImgOptions,
@@ -15,6 +15,17 @@ import { D3ZoomEvent, ZoomBehavior, ZoomedElementBaseType, ZoomTransform } from 
 import { FlextreeLayout } from 'd3-flextree';
 import { D3DragEvent, DraggedElementBaseType } from 'd3-drag';
 import merge from 'lodash.merge';
+import { calculateCompactFlexDimensions, calculateCompactFlexPositions } from './utils/compact';
+import {
+  collapse,
+  collapseLevel,
+  expand,
+  expandLevel,
+  expandNodesWithExpandedFlag,
+  getNodeChildren,
+  isCollapsed,
+} from './utils/children';
+import { downloadImage, toDataURL } from './utils/image';
 
 export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   private id = `${LibName}_${createRandomString()}`;
@@ -99,7 +110,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
         nodeA.parent == nodeB.parent ? 0 : attrs.neighbourMargin(nodeA as D3Node<TData>, nodeB as D3Node<TData>),
       );
 
-    this.setLayouts({ expandNodesFirst: false });
+    this.setLayouts(false);
 
     // *************************  DRAWING **************************
     //Add svg
@@ -203,107 +214,6 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     return this;
   }
 
-  addNodes(nodesToAdd: TData[]) {
-    const attrs = this.getOptions();
-
-    const newIds = new Set<string>();
-    nodesToAdd.forEach((entry) => newIds.add(this.getNodeId(entry)));
-
-    const allNodesAreValid = nodesToAdd.every((nodeToAdd) => {
-      const nodeId = this.getNodeId(nodeToAdd);
-      const nodeFound = this.allNodes.filter(({ data }) => this.getNodeId(data) === nodeId)[0];
-      const parentFound = this.allNodes.filter(
-        ({ data }) => this.getNodeId(data) === this.getParentNodeId(nodeToAdd),
-      )[0];
-      if (nodeFound) {
-        console.warn(`${LibName} addNodes: Node with id (${nodeId}) already exists in tree`);
-        return false;
-      }
-      if (!parentFound && !newIds.has(this.getNodeId(nodeToAdd))) {
-        console.warn(`${LibName} addNodes: Parent node with id (${nodeId}) not found in the tree`);
-        return false;
-      }
-
-      return true;
-    });
-
-    if (!allNodesAreValid) {
-      return this;
-    }
-
-    nodesToAdd.forEach((nodeToAdd) => {
-      if (nodeToAdd._centered && !nodeToAdd._expanded) {
-        nodeToAdd._expanded = true;
-      }
-      attrs.data?.push(nodeToAdd);
-    });
-
-    attrs.onDataChange(attrs.data || []);
-
-    // Update state of nodes and redraw graph
-    this.updateNodesState();
-
-    return this;
-  }
-
-  addNode(node: TData) {
-    return this.addNodes([node]);
-  }
-
-  removeNode(nodeId: string) {
-    const attrs = this.getOptions();
-    const node = this.allNodes.filter(({ data }) => this.getNodeId(data) == nodeId)[0];
-    if (!node) {
-      console.warn(`${LibName} removeNode: Node with id (${nodeId}) not found in the tree`);
-      return this;
-    }
-
-    // Remove all node children
-    // Retrieve all children nodes ids (including current node itself)
-    node.descendants().forEach((d) => (d.data._filteredOut = true));
-
-    const descendants = this.getNodeChildren(node, []);
-    descendants.forEach((d) => (d._filtered = true));
-
-    // Filter out retrieved nodes and reassign data
-    attrs.data = attrs.data!.filter((d) => !d._filtered);
-
-    attrs.onDataChange(attrs.data);
-
-    const updateNodesState = this.updateNodesState.bind(this);
-    // Update state of nodes and redraw graph
-    updateNodesState();
-
-    return this;
-  }
-
-  /**
-   * This method retrieves passed node's children IDs (including node)
-   */
-  private getNodeChildren(node: D3Node<TData>, nodeStore: Array<TData>) {
-    const { data, children, _children } = node;
-
-    // Store current node ID
-    nodeStore.push(data);
-
-    // Loop over children and recursively store descendants id (expanded nodes)
-    if (children) {
-      children.forEach((d) => {
-        this.getNodeChildren(d, nodeStore);
-      });
-    }
-
-    // Loop over _children and recursively store descendants id (collapsed nodes)
-    if (_children) {
-      _children.forEach((d) => {
-        this.getNodeChildren(d, nodeStore);
-      });
-    }
-
-    // Return result
-    return nodeStore;
-  }
-
   update(node?: D3Node<TData>) {
     const attrs = this.getOptions();
 
@@ -312,7 +222,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     }
 
     if (attrs.compact) {
-      this.calculateCompactFlexDimensions(this.root);
+      calculateCompactFlexDimensions(this.root, attrs);
     }
 
     //  Assigns the x and y position for the nodes
@@ -320,7 +230,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
 
     // Reassigns the x and y position for the based on the compact layout
     if (attrs.compact) {
-      this.calculateCompactFlexPositions(this.root);
+      calculateCompactFlexPositions(this.root, attrs);
     }
 
     const nodes = treeData.descendants() as FlextreeD3Node<TData>[];
@@ -370,170 +280,76 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     this.applyDraggable();
   }
 
-  private calculateCompactFlexDimensions(root: D3Node<TData>) {
+  addNodes(nodesToAdd: TData[]) {
     const attrs = this.getOptions();
-    root.eachBefore((node) => {
-      node.firstCompact = undefined;
-      node.compactEven = undefined;
-      node.flexCompactDim = undefined;
-      node.firstCompactNode = undefined;
-      node.compactNoChildren = undefined;
-    });
-    root.eachBefore((node) => {
-      if (node.children && node.children.length > 1) {
-        const compactChildren = attrs.compactNoChildren ? node.children : node.children.filter((d) => !d.children);
 
-        if (compactChildren.length < 2) return;
+    const newIds = new Set<string>();
+    nodesToAdd.forEach((entry) => newIds.add(this.getNodeId(entry)));
 
-        const maxColumnDimension = d3.max(
-          compactChildren,
-          attrs.layoutBindings[attrs.layout].compactDimension.sizeColumn,
-        )!;
-
-        const calculateCompactDimension = () => {
-          compactChildren.forEach((child, i) => {
-            if (!i) {
-              child.firstCompact = true;
-            }
-            child.compactEven = !(i % 2);
-            child.row = Math.floor(i / 2);
-          });
-          const columnSize = maxColumnDimension * 2;
-          const rowsMapNew = groupBy(
-            compactChildren,
-            (d) => d.row!,
-            (reducedGroup) =>
-              d3.max(
-                reducedGroup,
-                (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d) + attrs.compactMarginBetween(d),
-              ) ?? 0,
-          );
-          const rowSize = d3.sum(rowsMapNew.map((v) => v[1]));
-          compactChildren.forEach((node) => {
-            node.firstCompactNode = compactChildren[0];
-            if (node.firstCompact) {
-              node.flexCompactDim = [
-                columnSize + attrs.compactMarginPair(node),
-                rowSize - attrs.compactMarginBetween(node),
-              ];
-            } else {
-              node.flexCompactDim = [0, 0];
-            }
-          });
-          node.flexCompactDim = undefined;
-        };
-
-        const calculateCompactAsGroupDimension = () => {
-          const columnSize = maxColumnDimension;
-          compactChildren[0].firstCompact = true;
-
-          node.compactNoChildren = compactChildren.every((d) => !attrs.isNodeButtonVisible(d));
-          if (node.compactNoChildren) {
-            const widthWithPaddings = columnSize + 2 * attrs.compactNoChildrenMargin;
-            const heightWithPaddings =
-              2 * attrs.compactNoChildrenMargin +
-              d3.sum(
-                compactChildren,
-                (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d) + attrs.compactMarginBetween(d),
-              ) -
-              attrs.compactMarginBetween(node);
-
-            compactChildren.forEach((node, i) => {
-              node.firstCompactNode = compactChildren[0];
-              if (i === 0) {
-                node.flexCompactDim = [widthWithPaddings, heightWithPaddings];
-              } else {
-                node.flexCompactDim = [0, 0];
-              }
-            });
-
-            node.flexCompactDim = undefined;
-          }
-        };
-
-        if (attrs.compactNoChildren) {
-          calculateCompactAsGroupDimension();
-        } else {
-          calculateCompactDimension();
-        }
+    const allNodesAreValid = nodesToAdd.every((nodeToAdd) => {
+      const nodeId = this.getNodeId(nodeToAdd);
+      const nodeFound = this.allNodes.filter(({ data }) => this.getNodeId(data) === nodeId)[0];
+      const parentFound = this.allNodes.filter(
+        ({ data }) => this.getNodeId(data) === this.getParentNodeId(nodeToAdd),
+      )[0];
+      if (nodeFound) {
+        console.warn(`${LibName} addNodes: Node with id (${nodeId}) already exists in tree`);
+        return false;
       }
+      if (!parentFound && !newIds.has(this.getNodeId(nodeToAdd))) {
+        console.warn(`${LibName} addNodes: Parent node with id (${nodeId}) not found in the tree`);
+        return false;
+      }
+
+      return true;
     });
+
+    if (!allNodesAreValid) {
+      return this;
+    }
+
+    nodesToAdd.forEach((nodeToAdd) => {
+      if (nodeToAdd._centered && !nodeToAdd._visible) {
+        nodeToAdd._visible = true;
+      }
+      attrs.data?.push(nodeToAdd);
+    });
+
+    attrs.onDataChange(attrs.data || []);
+
+    // Update state of nodes and redraw graph
+    this.updateNodesState();
+
+    return this;
   }
 
-  private calculateCompactFlexPositions(root: D3Node<TData>) {
+  addNode(node: TData) {
+    return this.addNodes([node]);
+  }
+
+  removeNode(nodeId: string) {
     const attrs = this.getOptions();
-    root.eachBefore((node) => {
-      if (node.children) {
-        const compactChildren = node.children.filter((d) => d.flexCompactDim);
-        const fch = compactChildren[0];
-        if (!fch) {
-          return;
-        }
+    const node = this.allNodes.filter(({ data }) => this.getNodeId(data) == nodeId)[0];
+    if (!node) {
+      console.warn(`${LibName} removeNode: Node with id (${nodeId}) not found in the tree`);
+      return this;
+    }
 
-        const setCompactX = () => {
-          compactChildren.forEach((child, i) => {
-            if (i === 0) fch.x -= getNumber(fch.flexCompactDim?.[0]) / 2;
-            if (i && (i % 2) - 1)
-              child.x = fch.x + getNumber(fch.flexCompactDim?.[0]) * 0.25 - attrs.compactMarginPair(child) / 4;
-            else if (i)
-              child.x = fch.x + getNumber(fch.flexCompactDim?.[0]) * 0.75 + attrs.compactMarginPair(child) / 4;
-          });
-          const centerX = fch.x + getNumber(fch.flexCompactDim?.[0]) * 0.5;
-          fch.x = fch.x + getNumber(fch.flexCompactDim?.[0]) * 0.25 - attrs.compactMarginPair(fch) / 4;
-          const offsetX = node.x - centerX;
-          if (Math.abs(offsetX) < 10) {
-            compactChildren.forEach((d) => (d.x += offsetX));
-          }
-        };
+    // Remove all node children
+    // Retrieve all children nodes ids (including current node itself)
+    const descendants = getNodeChildren(node);
+    descendants.forEach((d) => (d._toDelete = true));
 
-        const setCompactY = () => {
-          const rowsMapNew = groupBy(
-            compactChildren,
-            (d) => d.row!,
-            (reducedGroup) =>
-              d3.max(reducedGroup, (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d)) ?? 0,
-          );
-          const cumSum = d3.cumsum(rowsMapNew.map((d) => d[1] + attrs.compactMarginBetween()));
-          compactChildren.forEach((node) => {
-            if (node.row) {
-              node.y = fch.y + cumSum[node.row - 1];
-            } else {
-              node.y = fch.y;
-            }
-          });
-        };
+    // Filter out retrieved nodes and reassign data
+    attrs.data = attrs.data!.filter((d) => !d._toDelete);
 
-        const setCompactAsGroupX = () => {
-          const centerX = fch.x;
-          compactChildren.forEach((d) => {
-            d.x = centerX;
-          });
-        };
+    attrs.onDataChange(attrs.data);
 
-        const setCompactAsGroupY = () => {
-          const cumSum = d3.cumsum(
-            compactChildren.map(
-              (d) => attrs.layoutBindings[attrs.layout].compactDimension.sizeRow(d) + attrs.compactMarginBetween(d),
-            ),
-          );
+    const updateNodesState = this.updateNodesState.bind(this);
+    // Update state of nodes and redraw graph
+    updateNodesState();
 
-          const initialY = fch.y;
-          compactChildren.forEach((node, i) => {
-            node.y = initialY + (i === 0 ? 0 : cumSum[i - 1]);
-          });
-        };
-
-        if (attrs.compactNoChildren) {
-          if (node.compactNoChildren) {
-            setCompactAsGroupX();
-            setCompactAsGroupY();
-          }
-        } else {
-          setCompactX();
-          setCompactY();
-        }
-      }
-    });
+    return this;
   }
 
   private createAndUpdateLinks(links: FlextreeD3Node<TData>[], { x0, y0, x = 0, y = 0, width, height }: D3Node<TData>) {
@@ -753,7 +569,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
         return attrs.nodeWidth(d) + attrs.compactNoChildrenMargin * 2;
       })
       .attr('height', (d) => {
-        const { data, children, compactNoChildren } = d;
+        const { children, compactNoChildren } = d;
 
         if (children && children.length > 1 && attrs.compactNoChildren && compactNoChildren) {
           const compactAsGroupChildrenSize =
@@ -889,7 +705,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       });
 
     nodeUpdate.select('.node-compact-rect').attr('height', (d) => {
-      const { children, data, compactNoChildren } = d;
+      const { children, compactNoChildren } = d;
 
       if (children && children.length > 1 && compactNoChildren) {
         const compactAsGroupChildrenSize =
@@ -959,26 +775,12 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       d.data._centeredWithDescendants = true;
     }
 
-    // If children are expanded
-    if (d.children) {
-      //Collapse them
-      d._children = d.children;
-      d.children = undefined;
-
-      // Set descendants expanded property to false
-      this.setExpansionFlagToChildren(d, false);
+    if (isCollapsed(d)) {
+      expandLevel(d);
     } else {
-      // Expand children
-      d.children = d._children;
-      d._children = undefined;
-
-      // Set each child as expanded
-      if (d.children) {
-        d.children.forEach(({ data }) => (data._expanded = true));
-      }
+      collapseLevel(d);
     }
 
-    // Redraw Graph
     this.update(d);
   }
 
@@ -1030,13 +832,13 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
    * This function updates nodes state and redraws graph, usually after data change
    */
   private updateNodesState() {
-    this.setLayouts({ expandNodesFirst: true });
+    this.setLayouts(true);
 
     // Redraw Graphs
     this.update(this.root);
   }
 
-  private setLayouts({ expandNodesFirst = true }) {
+  private setLayouts(expandNodesFirst: boolean) {
     const attrs = this.getOptions();
     // Store new root by converting flat data to hierarchy
     this.root = d3
@@ -1066,19 +868,17 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     if (this.root.children) {
       if (expandNodesFirst) {
         // Expand all nodes first
-        this.root.children.forEach(this.expand);
+        this.root.eachBefore(expand);
       }
       // Then collapse them all
-      this.root.children.forEach((d) => this.collapse(d));
+      this.root.eachAfter(collapse);
 
       // Collapse root if level is 0
       if (attrs.expandLevel === 0) {
-        this.root._children = this.root.children;
-        this.root.children = undefined;
+        collapse(this.root);
       }
 
-      // Then only expand nodes, which have expanded property set to true
-      [this.root].forEach((ch) => this.expandSomeNodes(ch));
+      expandNodesWithExpandedFlag(this.allNodes);
     }
   }
 
@@ -1137,7 +937,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       return this;
     }
     node.data._centered = true;
-    node.data._expanded = true;
+    node.data._visible = true;
     return this;
   }
 
@@ -1148,7 +948,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       return this;
     }
     node.data._highlighted = true;
-    node.data._expanded = true;
+    node.data._visible = true;
     node.data._centered = true;
     return this;
   }
@@ -1160,7 +960,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       return this;
     }
     node.data._upToTheRootHighlighted = true;
-    node.data._expanded = true;
+    node.data._visible = true;
     node.ancestors().forEach((d) => (d.data._upToTheRootHighlighted = true));
     return this;
   }
@@ -1263,57 +1063,6 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     return this;
   }
 
-  // This function changes `expanded` property to descendants
-  private setExpansionFlagToChildren(d: D3Node<TData>, flag: boolean) {
-    const { data, children, _children } = d;
-    // Set flag to the current property
-    data._expanded = flag;
-
-    // Loop over and recursively update expanded children's descendants
-    if (children) {
-      children.forEach((d) => {
-        this.setExpansionFlagToChildren(d, flag);
-      });
-    }
-
-    // Loop over and recursively update collapsed children's descendants
-    if (_children) {
-      _children.forEach((d) => {
-        this.setExpansionFlagToChildren(d, flag);
-      });
-    }
-  }
-
-  // Method which only expands nodes, which have property set "expanded=true"
-  private expandSomeNodes(d: D3Node<TData>) {
-    // If node has expanded property set
-    if (d.data._expanded) {
-      // Retrieve node's parent
-      let parent = d.parent;
-
-      // While we can go up
-      while (parent) {
-        // Expand all current parent's children
-        if (parent._children) {
-          parent.children = parent._children;
-        }
-
-        // Replace current parent holding object
-        parent = parent.parent;
-      }
-    }
-
-    // Recursively do the same for collapsed nodes
-    if (d._children) {
-      d._children.forEach((ch) => this.expandSomeNodes(ch));
-    }
-
-    // Recursively do the same for expanded nodes
-    if (d.children) {
-      d.children.forEach((ch) => this.expandSomeNodes(ch));
-    }
-  }
-
   /**
    * This function can be invoked via chart.setExpanded API, it expands or collapses particular node
    */
@@ -1325,40 +1074,18 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       console.warn(`${LibName} setExpanded: Node with id (${id}) not found in the tree`);
       return this;
     }
-    node.data._expanded = expandedFlag;
+    node.data._visible = expandedFlag;
     return this;
   }
 
-  /**
-   * Collapses passed node and it's descendants
-   */
-  collapse(d: D3Node<TData>) {
-    if (d.children) {
-      d._children = d.children;
-      d._children.forEach((ch) => this.collapse(ch));
-      d.children = undefined;
-    }
-  }
-
-  /**
-   * Expands passed node and it's descendants
-   */
-  expand(d: D3Node<TData>) {
-    if (d._children) {
-      d.children = d._children;
-      d.children.forEach((ch) => this.expand(ch));
-      d._children = undefined;
-    }
-  }
-
   expandAll() {
-    this.allNodes.forEach((d) => (d.data._expanded = true));
+    this.allNodes.forEach((d) => (d.data._visible = true));
     this.render();
     return this;
   }
 
   collapseAll() {
-    this.allNodes.forEach((d) => (d.data._expanded = false));
+    this.allNodes.forEach((d) => (d.data._visible = false));
     this.render();
     return this;
   }

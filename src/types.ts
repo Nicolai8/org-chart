@@ -25,10 +25,9 @@ export type OrgChartDataItem<
   _centeredWithDescendants?: boolean;
   _directSubordinates?: number;
   _totalSubordinates?: number;
-  _expanded?: boolean;
+  _visible?: boolean;
   _centered?: boolean;
-  _filtered?: boolean;
-  _filteredOut?: boolean;
+  _toDelete?: boolean;
 };
 
 export type D3NodeDimensions = {
@@ -63,6 +62,10 @@ export type D3Node<TData> = D3NodeDimensions &
      * true if all children nodes doesn't have its own children
      */
     compactNoChildren?: boolean;
+    /**
+     * true if compact "no children" is expanded
+     */
+    compactNoChildrenExpanded?: boolean;
     _children?: D3Node<TData>[];
   };
 
