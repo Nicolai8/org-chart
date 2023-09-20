@@ -24,19 +24,26 @@ const groupBy = <T>(
   return Object.entries(result) as unknown as [number, number][];
 };
 
+export const setCompactDefaultOptions = <TData extends OrgChartDataItem = OrgChartDataItem>(
+  node: D3Node<TData>,
+  options: OrgChartOptions<TData>,
+) => {
+  node.firstCompact = undefined;
+  node.compactEven = undefined;
+  node.flexCompactDim = undefined;
+  node.firstCompactNode = undefined;
+  if (options.compactNoChildren) {
+    const children = getDirectChildren(node);
+    node.compactNoChildren = children.length > 0 && children.every((d) => !options.isNodeButtonVisible(d));
+  }
+}
+
 export const calculateCompactFlexDimensions = <TData extends OrgChartDataItem = OrgChartDataItem>(
   root: D3Node<TData>,
   options: OrgChartOptions<TData>,
 ) => {
   root.eachBefore((node) => {
-    node.firstCompact = undefined;
-    node.compactEven = undefined;
-    node.flexCompactDim = undefined;
-    node.firstCompactNode = undefined;
-    if (options.compactNoChildren) {
-      const children = getDirectChildren(node);
-      node.compactNoChildren = children.length > 0 && children.every((d) => !options.isNodeButtonVisible(d));
-    }
+
   });
   root.eachBefore((node) => {
     if (node.children && node.children.length > 1) {

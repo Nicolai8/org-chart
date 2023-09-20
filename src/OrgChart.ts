@@ -15,15 +15,22 @@ import { D3ZoomEvent, ZoomBehavior, ZoomedElementBaseType, ZoomTransform } from 
 import { FlextreeLayout } from 'd3-flextree';
 import { D3DragEvent, DraggedElementBaseType } from 'd3-drag';
 import merge from 'lodash.merge';
-import { calculateCompactFlexDimensions, calculateCompactFlexPositions, nodeHeight, nodeWidth } from './utils/compact';
+import {
+  calculateCompactFlexDimensions,
+  calculateCompactFlexPositions,
+  nodeHeight,
+  nodeWidth,
+  setCompactDefaultOptions,
+} from './utils/compact';
 import {
   collapse,
-  collapseCompactLevel,
-  collapseLevel,
   expand,
-  expandLevel,
+  collapseCompact,
+  expandCompact,
+  toggleLevel,
   expandNodesWithExpandedFlag,
   getNodeChildren,
+  setExpandedFlag,
 } from './utils/children';
 import { downloadImage, toDataURL } from './utils/image';
 import { renderOrUpdateNodes, restyleForeignObjectElements } from './render/nodes';
@@ -404,7 +411,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     const { data } = node;
 
     if (data._type === 'group-toggle' && node.parent) {
-      expandLevel(node.parent, true);
+      expandCompact(node.parent);
       this.update(node.parent);
       return;
     }
@@ -429,11 +436,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       d.data._centeredWithDescendants = true;
     }
 
-    if (d.data._expanded) {
-      collapseLevel(d);
-    } else {
-      expandLevel(d);
-    }
+    toggleLevel(d);
 
     this.update(d);
   }
@@ -441,7 +444,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   private onCompactGroupCollapseButtonClick(e: MouseEvent, d: D3Node<TData>) {
     e.stopPropagation();
 
-    collapseCompactLevel(d);
+    collapseCompact(d);
 
     this.update(d);
   }
@@ -489,12 +492,6 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       .id((d) => this.getNodeId(d))
       .parentId((d) => this.getParentNodeId(d))(attrs.data || []) as D3Node<TData>;
 
-    this.root.each((node) => {
-      const width = nodeWidth(node, attrs);
-      const height = nodeHeight(node, attrs);
-      Object.assign(node, { width, height });
-    });
-
     // Store positions, where children appear during their enter animation
     this.root.x0 = 0;
     this.root.y0 = 0;
@@ -508,17 +505,25 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       });
     });
 
+    this.allNodes.forEach((node) => {
+      const width = nodeWidth(node, attrs);
+      const height = nodeHeight(node, attrs);
+      setCompactDefaultOptions(node, attrs);
+      Object.assign(node, { width, height });
+    });
+
     if (this.root.children) {
       if (expandNodesFirst) {
         // Expand all nodes first
-        this.root.eachBefore(expand);
+        this.root.eachBefore((node) => expand(node, false));
       }
       // Then collapse them all
-      this.root.eachAfter(collapse);
+      this.root.eachAfter((node) => collapse(node, false));
 
+      // todo: add expand to expandLevel
       // Collapse root if level is 0
       if (attrs.expandLevel === 0) {
-        collapse(this.root);
+        collapse(this.root, false);
       }
 
       expandNodesWithExpandedFlag(this.allNodes);
@@ -580,9 +585,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       return this;
     }
     node.data._centered = true;
-    if (node.parent) {
-      node.parent.data._expanded = true;
-    }
+    setExpandedFlag(node.parent, true);
 
     return this;
   }
@@ -594,9 +597,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       return this;
     }
     node.data._highlighted = true;
-    if (node.parent) {
-      node.parent.data._expanded = true;
-    }
+    setExpandedFlag(node.parent, true);
     node.data._centered = true;
 
     return this;
@@ -610,7 +611,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     }
     node.data._upToTheRootHighlighted = true;
     node.ancestors().forEach((d) => {
-      d.data._expanded = true;
+      setExpandedFlag(d, true);
       d.data._upToTheRootHighlighted = true;
     });
     return this;
@@ -725,19 +726,19 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       console.warn(`${LibName} setExpanded: Node with id (${id}) not found in the tree`);
       return this;
     }
-    node.data._expanded = expandedFlag;
+    setExpandedFlag(node, expandedFlag);
 
     return this;
   }
 
   expandAll() {
-    this.allNodes.forEach((d) => (d.data._expanded = true));
+    this.allNodes.forEach((d) => setExpandedFlag(d, true));
     this.render();
     return this;
   }
 
   collapseAll() {
-    this.allNodes.forEach((d) => (d.data._expanded = false));
+    this.allNodes.forEach((d) => setExpandedFlag(d, false));
     this.render();
     return this;
   }
