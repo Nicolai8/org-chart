@@ -23,7 +23,7 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
   childrenMargin: () => 60,
   linkYOffset: 30,
 
-  expandLevel: 1,
+  expandLevel: 0,
   defaultFont: 'Helvetica',
   duration: 400,
   imageName: 'Chart',
@@ -41,8 +41,8 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
   },
   compactCollapsedContent: (d) =>
     `<div style="height: 100%;display:flex;align-items:center;justify-content:center;">${d.data._directSubordinates}</div>`,
-  compactCollapsedNodeUpdate: function (d) {
-    d3.select<BaseType, D3Node<TData>>(this).select('.node-rect').attr('stroke', '#333').attr('stroke-width', 1);
+  compactCollapsedNodeUpdate: function (nodeGroup) {
+    nodeGroup.select('.node-rect').attr('stroke', '#333').attr('stroke-width', 1);
   },
   compactCollapsedNodeWidth: function (d) {
     return this.nodeWidth(d);
@@ -68,8 +68,8 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
              <br/> 
              Or check different <a href="https://github.com/bumbeishvili/org-chart#jump-to-examples" target="_blank">layout examples</a>
              </div>`,
-  nodeUpdate: function (d) {
-    d3.select<BaseType, D3Node<TData>>(this)
+  nodeUpdate: function (nodeGroup, d) {
+    nodeGroup
       .select('.node-rect')
       .attr('stroke', (d) => (d.data._highlighted || d.data._upToTheRootHighlighted ? '#E27396' : 'none'))
       .attr('stroke-width', d.data._highlighted || d.data._upToTheRootHighlighted ? 10 : 1);

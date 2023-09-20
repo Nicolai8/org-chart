@@ -24,7 +24,6 @@ import {
 } from './utils/compact';
 import {
   collapse,
-  expand,
   collapseCompact,
   expandCompact,
   toggleLevel,
@@ -120,7 +119,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
         nodeA.parent == nodeB.parent ? 0 : attrs.neighbourMargin(nodeA as D3Node<TData>, nodeB as D3Node<TData>),
       );
 
-    this.setLayouts(false);
+    this.setLayouts(true);
 
     // *************************  DRAWING **************************
     //Add svg
@@ -371,9 +370,8 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
 
     attrs.onDataChange(attrs.data);
 
-    const updateNodesState = this.updateNodesState.bind(this);
     // Update state of nodes and redraw graph
-    updateNodesState();
+    this.updateNodesState();
 
     return this;
   }
@@ -478,19 +476,19 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
    * This function updates nodes state and redraws graph, usually after data change
    */
   private updateNodesState() {
-    this.setLayouts(true);
+    this.setLayouts(false);
 
     // Redraw Graphs
     this.update(this.root);
   }
 
-  private setLayouts(expandNodesFirst: boolean) {
-    const attrs = this.getOptions();
+  private setLayouts(firstDraw: boolean) {
+    const options = this.getOptions();
     // Store new root by converting flat data to hierarchy
     this.root = d3
       .stratify<TData>()
       .id((d) => this.getNodeId(d))
-      .parentId((d) => this.getParentNodeId(d))(attrs.data || []) as D3Node<TData>;
+      .parentId((d) => this.getParentNodeId(d))(options.data || []) as D3Node<TData>;
 
     // Store positions, where children appear during their enter animation
     this.root.x0 = 0;
@@ -506,28 +504,19 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     });
 
     this.allNodes.forEach((node) => {
-      const width = nodeWidth(node, attrs);
-      const height = nodeHeight(node, attrs);
-      setCompactDefaultOptions(node, attrs);
+      const width = nodeWidth(node, options);
+      const height = nodeHeight(node, options);
+      setCompactDefaultOptions(node, options);
       Object.assign(node, { width, height });
     });
 
-    if (this.root.children) {
-      if (expandNodesFirst) {
-        // Expand all nodes first
-        this.root.eachBefore((node) => expand(node, false));
-      }
-      // Then collapse them all
-      this.root.eachAfter((node) => collapse(node, false));
+    this.root.eachAfter((node) => collapse(node, false));
 
-      // todo: add expand to expandLevel
-      // Collapse root if level is 0
-      if (attrs.expandLevel === 0) {
-        collapse(this.root, false);
-      }
-
-      expandNodesWithExpandedFlag(this.allNodes);
+    if (firstDraw && options.expandLevel !== null) {
+      this.expandToLevel(options.expandLevel);
+      this.setOptions({ expandLevel: null });
     }
+    expandNodesWithExpandedFlag(this.allNodes);
   }
 
   private zoomTreeBounds({
@@ -733,13 +722,25 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
 
   expandAll() {
     this.allNodes.forEach((d) => setExpandedFlag(d, true));
+
     this.render();
-    return this;
   }
 
   collapseAll() {
     this.allNodes.forEach((d) => setExpandedFlag(d, false));
+
     this.render();
+  }
+
+  expandToLevel(depth: number) {
+    this.allNodes.forEach((node) => {
+      if (node.depth <= depth) {
+        setExpandedFlag(node, true);
+      } else {
+        setExpandedFlag(node, false);
+      }
+    });
+
     return this;
   }
 

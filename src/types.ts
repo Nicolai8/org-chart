@@ -30,7 +30,7 @@ export type OrgChartDataItem<
   /**
    * true if compact "no children" is expanded
    */
-  _compactExpanded: boolean;
+  _compactExpanded?: boolean;
   _toDelete?: boolean;
   _type?: 'normal' | 'group-toggle';
 };
@@ -179,7 +179,8 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
   // When correcting links which is not working for safari
   linkYOffset: number;
 
-  expandLevel: number;
+  // Initial expand level
+  expandLevel: number | null;
   // Set default font
   defaultFont: string;
   duration: number; // Configure duration of transitions
@@ -211,7 +212,7 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
   compactToggleButtonMargin: number;
   compactToggleBtnIcon?: string;
   compactCollapsedContent: (d: D3Node<TData>) => string;
-  compactCollapsedNodeUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
+  compactCollapsedNodeUpdate: (nodeGroup: Selection<SVGGraphicsElement, D3Node<TData>, null, undefined>) => void;
   compactCollapsedNodeWidth: (d: D3Node<TData>) => number;
   compactCollapsedNodeHeight: (d: D3Node<TData>) => number;
 
@@ -236,7 +237,7 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
   /**
    * You can access and modify actual node DOM element in runtime using this method.
    */
-  nodeUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
+  nodeUpdate: (nodeGroup: Selection<SVGGraphicsElement, D3Node<TData>, null, undefined>, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
 
   // Enable drag and drop
   dragNDrop: boolean;
