@@ -1,4 +1,6 @@
-// This function detects whether current browser is edge
+/**
+ * This function detects whether current browser is edge
+ */
 export const isEdge = () => {
   return window.navigator.userAgent.includes('Edge');
 };

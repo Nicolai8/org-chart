@@ -1,8 +1,9 @@
+import { BaseType, Selection } from 'd3-selection';
 import { D3Node, FlextreeD3Node, OrgChartDataItem, OrgChartOptions } from '../types';
 import { d3 } from '../constants';
 import { isEdge } from '../utils/core';
-import { BaseType, Selection } from 'd3-selection';
 import collapseBtn from '../icons/collapse-btn.svg';
+import { nodeHeight, nodeWidth } from '../utils/compact';
 
 /**
  * This function basically redraws visible graph, based on nodes state
@@ -22,6 +23,9 @@ export const restyleForeignObjectElements = <TData extends OrgChartDataItem = Or
     .style('width', ({ width }: D3Node<TData>) => `${width}px`)
     .style('height', ({ height }: D3Node<TData>) => `${height}px`)
     .html(function (d, i, arr) {
+      if (d.data._type === 'group-toggle' && d.parent) {
+        return options.compactCollapsedContent(d.parent);
+      }
       return options.nodeContent.bind(null)(d, i, arr, options);
     });
 };
@@ -162,9 +166,7 @@ const renderNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
       data: (d) => [d],
     })
     .attr('pointer-events', 'none')
-    .attr('width', (d) => {
-      return options.nodeWidth(d) + options.compactNoChildrenMargin * 2;
-    })
+    .attr('width', (d) => nodeWidth(d, options) + options.compactNoChildrenMargin * 2)
     .attr('height', (d) => {
       const { children, compactNoChildren } = d;
 
@@ -178,16 +180,32 @@ const renderNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
         return compactAsGroupChildrenSize + options.compactNoChildrenMargin * 2;
       }
 
-      return options.nodeHeight(d) + options.compactNoChildrenMargin * 2;
+      return nodeHeight(d, options) + options.compactNoChildrenMargin * 2;
     });
 
-  nodeCompactGroup
+  const nodeCompactToggleBtnGroup = nodeCompactGroup
     .patternify({
       tag: 'g',
       selector: 'node-compact__toggle-btn',
     })
-    .html(options.compactNoChildrenToggleBtnIcon || collapseBtn)
+    .attr('cursor', 'pointer')
     .on('click', onCompactGroupToggleButtonClick);
+
+  nodeCompactToggleBtnGroup
+    .patternify({
+      tag: 'rect',
+      selector: 'node-compact__toggle-btn-rect',
+    })
+    .attr('width', 20)
+    .attr('height', 20)
+    .attr('fill', 'transparent');
+
+  nodeCompactToggleBtnGroup
+    .patternify({
+      tag: 'g',
+      selector: 'node-compact__toggle-btn-icon',
+    })
+    .html(options.compactToggleBtnIcon || collapseBtn);
 
   options.compactNoChildrenUpdate(nodeCompactGroupRect);
 };
@@ -230,7 +248,7 @@ const updateNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
     .select('.node-compact__toggle-btn')
     .attr('transform', (d) => {
       const { width } = d;
-      const x = width + options.compactNoChildrenMargin * 2 + options.compactNoChildrenToggleBtnMargin;
+      const x = width + options.compactNoChildrenMargin * 2 + options.compactToggleButtonMargin;
       return `translate(${x},0)`;
     })
     .attr('display', (d) => {
@@ -239,7 +257,7 @@ const updateNodeCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(
       return data._compactExpanded ? null : 'none';
     });
 
-  compactGroup.select('.node-compact__toggle-btn svg').attr('display', (d) => {
+  compactGroup.select('.node-compact__toggle-btn-icon svg').attr('display', (d) => {
     const { data } = d;
 
     return data._compactExpanded ? null : 'none';

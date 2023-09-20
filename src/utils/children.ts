@@ -56,6 +56,20 @@ export const collapseLevel = <TData extends OrgChartDataItem = OrgChartDataItem>
   node.data._expanded = false;
 };
 
+const resetCompactGroupToggle = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
+  if (node.children?.[0]) {
+    node.children[0].data._type = undefined;
+  }
+}
+
+const expandCompactLevel = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
+  if (node._children?.[0]) {
+    // mark first child as group-toggle
+    node._children[0].data._type = 'group-toggle';
+    node.children = [node._children[0]];
+  }
+};
+
 export const expandLevel = <TData extends OrgChartDataItem = OrgChartDataItem>(
   node: D3Node<TData>,
   expandCompact: boolean = false,
@@ -69,25 +83,21 @@ export const expandLevel = <TData extends OrgChartDataItem = OrgChartDataItem>(
   if (node.compactNoChildren && !node.data._compactExpanded) {
     expandCompactLevel(node);
     return;
+  } else {
+    resetCompactGroupToggle(node);
   }
 
   expand(node);
 };
 
-const expandCompactLevel = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
-  if (node._children?.[0]) {
-    // mark first child as group-toggle
-    node._children[0].data._type = 'group-toggle';
-    node.children = [node._children[0]];
-  }
-};
-
 export const collapseCompactLevel = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
+  resetCompactGroupToggle(node);
+
   collapse(node);
   node.data._compactExpanded = false;
 
   expandLevel(node);
-}
+};
 
 /**
  * Method which only expands nodes, which have property set "expanded=true"

@@ -200,11 +200,19 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
    */
   compactNoChildren: boolean;
   compactNoChildrenMargin: number;
-  compactNoChildrenToggleBtnMargin: number;
   // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
   compactMarginPair: (d: D3Node<TData>) => number;
   // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
   compactMarginBetween: (d?: D3Node<TData>) => number;
+  compactNoChildrenUpdate: (
+    compactGroupRect: Selection<BaseType, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
+  ) => void;
+
+  compactToggleButtonMargin: number;
+  compactToggleBtnIcon?: string;
+  compactCollapsedContent: (d: D3Node<TData>) => string;
+  compactCollapsedNodeWidth: (d: D3Node<TData>) => number;
+  compactCollapsedNodeHeight: (d: D3Node<TData>) => number;
 
   // Configure zoom scale extent , if you don't want any kind of zooming, set it to [1,1]
   scaleExtent: [number, number];
@@ -259,10 +267,6 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
    */
   linkUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
 
-  compactNoChildrenUpdate: (
-    compactGroupRect: Selection<BaseType, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
-  ) => void;
-  compactNoChildrenToggleBtnIcon?: string;
   /**
    * Defining arrows with markers for connections
    */

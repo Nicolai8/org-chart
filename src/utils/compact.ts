@@ -197,3 +197,22 @@ export const calculateCompactFlexPositions = <TData extends OrgChartDataItem = O
     }
   });
 };
+
+
+export const nodeWidth = <TData extends OrgChartDataItem = OrgChartDataItem>(
+  node: D3Node<TData>,
+  options: OrgChartOptions<TData>,
+) => {
+  return node.data._type === 'group-toggle'
+    ? options.compactCollapsedNodeWidth(node)
+    : options.nodeWidth(node);
+};
+
+export const nodeHeight = <TData extends OrgChartDataItem = OrgChartDataItem>(
+  node: D3Node<TData>,
+  options: OrgChartOptions<TData>,
+) => {
+  return node.data._type === 'group-toggle'
+    ? options.compactCollapsedNodeHeight(node)
+    : options.nodeHeight(node);
+};

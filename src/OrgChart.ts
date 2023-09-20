@@ -15,15 +15,16 @@ import { D3ZoomEvent, ZoomBehavior, ZoomedElementBaseType, ZoomTransform } from 
 import { FlextreeLayout } from 'd3-flextree';
 import { D3DragEvent, DraggedElementBaseType } from 'd3-drag';
 import merge from 'lodash.merge';
-import { calculateCompactFlexDimensions, calculateCompactFlexPositions } from './utils/compact';
+import { calculateCompactFlexDimensions, calculateCompactFlexPositions, nodeHeight, nodeWidth } from './utils/compact';
 import {
-  collapse, collapseCompactLevel,
+  collapse,
+  collapseCompactLevel,
   collapseLevel,
   expand,
   expandLevel,
   expandNodesWithExpandedFlag,
-  getNodeChildren
-} from "./utils/children";
+  getNodeChildren,
+} from './utils/children';
 import { downloadImage, toDataURL } from './utils/image';
 import { renderOrUpdateNodes, restyleForeignObjectElements } from './render/nodes';
 import { renderOrUpdateLinks } from './render/links';
@@ -93,8 +94,8 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     this.flexTreeLayout = d3
       .flextree<TData>({
         nodeSize: (node) => {
-          const width = attrs.nodeWidth(node as D3Node<TData>);
-          const height = attrs.nodeHeight(node as D3Node<TData>);
+          const width = nodeWidth(node as D3Node<TData>, attrs);
+          const height = nodeHeight(node as D3Node<TData>, attrs);
           const siblingsMargin = attrs.siblingsMargin(node as D3Node<TData>);
           const childrenMargin = attrs.childrenMargin(node as D3Node<TData>);
 
@@ -489,8 +490,8 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       .parentId((d) => this.getParentNodeId(d))(attrs.data || []) as D3Node<TData>;
 
     this.root.each((node) => {
-      let width = attrs.nodeWidth(node);
-      let height = attrs.nodeHeight(node);
+      const width = nodeWidth(node, attrs);
+      const height = nodeHeight(node, attrs);
       Object.assign(node, { width, height });
     });
 
@@ -765,8 +766,8 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
           .drag<DraggedElementBaseType, D3Node<TData>>()
           .filter((e) => !e.target.closest('.node-button-g') && !e.target.closest('.node-foreign-object'))
           .on('start', function (e: D3DragEvent<DraggedElementBaseType, D3Node<TData>, D3Node<TData>>) {
-              const draggingElement = this as DraggedElementBaseType;
-              self.dragStarted(draggingElement, e);
+            const draggingElement = this as DraggedElementBaseType;
+            self.dragStarted(draggingElement, e);
           })
           .on(
             'drag',
