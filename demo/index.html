@@ -31,6 +31,7 @@
   <body>
     <div class="action-buttons" style="margin: 0 100px">
       <button onclick='chart.setExpanded("103").render()'>Expand #103</button>
+      <button onclick='chart.setExpanded("108").render()'>Expand #108</button>
       <button onclick='chart.setExpanded("103",false).render()'>Collapse #103</button>
       <button
         onclick='chart.addNode({id:"root child",parentId:"100",name:"test-name",position:"test-position",_centered:true})'
@@ -54,6 +55,8 @@
       <button onclick="chart.exportImg()">Export Current Image</button>
       <button onclick="chart.exportImg({full:true})">Export Export Full Image</button>
       <button onclick="chart.exportSvg()">Export SVG</button>
+      <button onclick='chart.expandToLevel(3).render()'>Expand 4 levels</button>
+      <button onclick='chart.expandToLevel(0).render()'>Expand 1 level only</button>
       <button onclick="chart.expandAll()">Expand All</button>
       <button onclick="chart.collapseAll()">Collapse All</button>
       <button onclick='chart.setOptions({connections:[{from:"145",to:"201",label:"Conflicts of interest"}]}).render()'>
@@ -73,7 +76,7 @@
         chart = new OrgChart({
           container: document.querySelector('.chart-container'),
           data: dataFlattened,
-          expandLevel: 2,
+          expandLevel: 1,
           nodeHeight: () => 85 + 25,
           nodeWidth: () => 220 + 2,
           childrenMargin: () => 50,

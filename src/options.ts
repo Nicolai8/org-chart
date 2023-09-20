@@ -1,7 +1,8 @@
 import { d3 } from './constants';
 import { D3Node, OrgChartConnection, OrgChartDataItem, OrgChartOptions } from './types';
 import { BaseType } from 'd3-selection';
-import { diagonal, getTextWidth, hdiagonal } from './utils';
+import { getTextWidth } from './utils/core';
+import { diagonal, hdiagonal } from './utils/calculations';
 
 const canvasContext = document.createElement('canvas').getContext('2d');
 
@@ -22,7 +23,7 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
   childrenMargin: () => 60,
   linkYOffset: 30,
 
-  expandLevel: 1,
+  expandLevel: 0,
   defaultFont: 'Helvetica',
   duration: 400,
   imageName: 'Chart',
@@ -32,8 +33,23 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
   compact: true,
   compactNoChildren: false,
   compactNoChildrenMargin: 15,
+  compactToggleButtonMargin: 10,
   compactMarginPair: () => 100,
   compactMarginBetween: () => 20,
+  compactNoChildrenUpdate: function (compactGroupRect) {
+    compactGroupRect.attr('fill', '#fff').attr('rx', 10).attr('stroke', '#e4e2e9').attr('stroke-width', 1);
+  },
+  compactCollapsedContent: (d) =>
+    `<div style="height: 100%;display:flex;align-items:center;justify-content:center;">${d.data._directSubordinates}</div>`,
+  compactCollapsedNodeUpdate: function (nodeGroup) {
+    nodeGroup.select('.node-rect').attr('stroke', '#333').attr('stroke-width', 1);
+  },
+  compactCollapsedNodeWidth: function (d) {
+    return this.nodeWidth(d);
+  },
+  compactCollapsedNodeHeight: function (d) {
+    return this.nodeHeight(d);
+  },
 
   scaleExtent: [0.001, 20],
   onZoomStart: () => {},
@@ -42,8 +58,8 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
   enableDoubleClickZoom: false,
   enableWheelZoom: true,
 
-  nodeWidth: () => 250,
-  nodeHeight: () => 150,
+  nodeWidth: (_) => 250,
+  nodeHeight: (_) => 150,
   onNodeClick: (d) => d,
   nodeContent: (d) => `<div style="padding:5px;font-size:10px;">Sample Node(id=${d.id}), override using <br/> 
             <code>chart.nodeContent({data}=>{ <br/>
@@ -52,8 +68,8 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
              <br/> 
              Or check different <a href="https://github.com/bumbeishvili/org-chart#jump-to-examples" target="_blank">layout examples</a>
              </div>`,
-  nodeUpdate: function (d) {
-    d3.select<BaseType, D3Node<TData>>(this)
+  nodeUpdate: function (nodeGroup, d) {
+    nodeGroup
       .select('.node-rect')
       .attr('stroke', (d) => (d.data._highlighted || d.data._upToTheRootHighlighted ? '#E27396' : 'none'))
       .attr('stroke-width', d.data._highlighted || d.data._upToTheRootHighlighted ? 10 : 1);
@@ -123,9 +139,6 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
     if (d.data._upToTheRootHighlighted) {
       d3.select(this).raise();
     }
-  },
-  compactNoChildrenUpdate: function (compactGroupRect) {
-    compactGroupRect.attr('fill', '#fff').attr('rx', 10).attr('stroke', '#e4e2e9').attr('stroke-width', 1);
   },
   defs: function (state, visibleConnections) {
     return `<defs>

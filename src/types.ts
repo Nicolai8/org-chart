@@ -25,10 +25,14 @@ export type OrgChartDataItem<
   _centeredWithDescendants?: boolean;
   _directSubordinates?: number;
   _totalSubordinates?: number;
-  _expanded?: boolean;
   _centered?: boolean;
-  _filtered?: boolean;
-  _filteredOut?: boolean;
+  _expanded?: boolean;
+  /**
+   * true if compact "no children" is expanded
+   */
+  _compactExpanded?: boolean;
+  _toDelete?: boolean;
+  _type?: 'normal' | 'group-toggle';
 };
 
 export type D3NodeDimensions = {
@@ -175,7 +179,8 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
   // When correcting links which is not working for safari
   linkYOffset: number;
 
-  expandLevel: number;
+  // Initial expand level
+  expandLevel: number | null;
   // Set default font
   defaultFont: string;
   duration: number; // Configure duration of transitions
@@ -200,6 +205,16 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
   compactMarginPair: (d: D3Node<TData>) => number;
   // Configure margin between two nodes in compact mode, use with caution, it is better to have the same value set for all nodes
   compactMarginBetween: (d?: D3Node<TData>) => number;
+  compactNoChildrenUpdate: (
+    compactGroupRect: Selection<BaseType, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
+  ) => void;
+
+  compactToggleButtonMargin: number;
+  compactToggleBtnIcon?: string;
+  compactCollapsedContent: (d: D3Node<TData>) => string;
+  compactCollapsedNodeUpdate: (nodeGroup: Selection<SVGGraphicsElement, D3Node<TData>, null, undefined>) => void;
+  compactCollapsedNodeWidth: (d: D3Node<TData>) => number;
+  compactCollapsedNodeHeight: (d: D3Node<TData>) => number;
 
   // Configure zoom scale extent , if you don't want any kind of zooming, set it to [1,1]
   scaleExtent: [number, number];
@@ -222,7 +237,7 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
   /**
    * You can access and modify actual node DOM element in runtime using this method.
    */
-  nodeUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
+  nodeUpdate: (nodeGroup: Selection<SVGGraphicsElement, D3Node<TData>, null, undefined>, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
 
   // Enable drag and drop
   dragNDrop: boolean;
@@ -254,9 +269,6 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
    */
   linkUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
 
-  compactNoChildrenUpdate: (
-    compactGroupRect: Selection<BaseType, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
-  ) => void;
   /**
    * Defining arrows with markers for connections
    */
