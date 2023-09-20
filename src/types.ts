@@ -211,6 +211,7 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
   compactToggleButtonMargin: number;
   compactToggleBtnIcon?: string;
   compactCollapsedContent: (d: D3Node<TData>) => string;
+  compactCollapsedNodeUpdate: (this: BaseType, d: D3Node<TData>, i: number, arr: ArrayLike<BaseType>) => void;
   compactCollapsedNodeWidth: (d: D3Node<TData>) => number;
   compactCollapsedNodeHeight: (d: D3Node<TData>) => number;
 

@@ -41,6 +41,9 @@ export const getChartOptions = <TData extends OrgChartDataItem = OrgChartDataIte
   },
   compactCollapsedContent: (d) =>
     `<div style="height: 100%;display:flex;align-items:center;justify-content:center;">${d.data._directSubordinates}</div>`,
+  compactCollapsedNodeUpdate: function (d) {
+    d3.select<BaseType, D3Node<TData>>(this).select('.node-rect').attr('stroke', '#333').attr('stroke-width', 1);
+  },
   compactCollapsedNodeWidth: function (d) {
     return this.nodeWidth(d);
   },

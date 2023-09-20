@@ -334,7 +334,13 @@ export const renderOrUpdateNodes = <TData extends OrgChartDataItem = OrgChartDat
 
   updateNodeButton(options, nodeUpdate);
 
-  nodeUpdate.each(options.nodeUpdate);
+  nodeUpdate.each(function (node, i, arr) {
+    if (node.data._type === 'group-toggle') {
+      options.compactCollapsedNodeUpdate.call(this, node, i, arr);
+      return;
+    }
+    options.nodeUpdate.call(this, node, i, arr);
+  });
 
   // Remove any exiting nodes after transition
   nodesSelection
