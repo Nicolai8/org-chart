@@ -34,7 +34,7 @@ export const setCompactDefaultOptions = <TData extends OrgChartDataItem = OrgCha
   node.firstCompactNode = undefined;
   if (options.compactNoChildren) {
     const children = getDirectChildren(node);
-    node.compactNoChildren = children.length > 0 && children.every((d) => !options.isNodeButtonVisible(d));
+    node.compactNoChildren = children.length > 1 && children.every((d) => !options.isNodeButtonVisible(d));
   }
 }
 
