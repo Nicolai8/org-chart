@@ -62,10 +62,16 @@ const setCompactGroupToggle = <TData extends OrgChartDataItem = OrgChartDataItem
   }
 };
 
+export const collapseInitiallyExpanded = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
+  node._children = node.children;
+  node.children = undefined;
+  resetCompactGroupToggle(node);
+};
+
 /**
  * Collapses passed node and it's descendants
  */
-export const collapse = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>, setFlags: boolean) => {
+const collapse = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>, setFlags: boolean) => {
   // !compactNoChildren
   // default
   // compactNoChildren && !_expanded
@@ -92,7 +98,7 @@ export const collapse = <TData extends OrgChartDataItem = OrgChartDataItem>(node
 /**
  * Expands passed node and it's descendants
  */
-export const expand = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>, setFlags: boolean) => {
+export const expand = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>, setFlags: boolean, expandCompact: boolean = false) => {
   resetCompactGroupToggle(node);
 
   node.children = node._children;
@@ -100,7 +106,7 @@ export const expand = <TData extends OrgChartDataItem = OrgChartDataItem>(node: 
 
   if (setFlags) {
     node.data._expanded = true;
-    if (node.compactNoChildren) {
+    if (node.compactNoChildren && expandCompact) {
       node.data._compactExpanded = true;
     }
   }
@@ -109,7 +115,7 @@ export const expand = <TData extends OrgChartDataItem = OrgChartDataItem>(node: 
 const expandLevel = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
   node.data._expanded = true;
 
-  if (node.compactNoChildren) {
+  if (node.compactNoChildren && !node.data._compactExpanded) {
     node.data._compactExpanded = false;
     setCompactGroupToggle(node);
   } else {
@@ -131,7 +137,7 @@ export const collapseCompact = <TData extends OrgChartDataItem = OrgChartDataIte
  * Expand compact nodes and removes Group-toggle. Triggered on Group-toggle Node click.
  */
 export const expandCompact = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>) => {
-  expand(node, true);
+  expand(node, true, true);
 };
 
 /**
@@ -154,12 +160,12 @@ export const expandNodesWithExpandedFlag = <TData extends OrgChartDataItem = Org
   const expandedNodes = allNodes.filter((node) => node.data._expanded);
 
   expandedNodes.forEach((d) => {
-    expand(d, true);
+    expandLevel(d);
 
     let parent = d.parent;
 
     while (parent && !parent.data._expanded) {
-      expand(parent, true);
+      expandLevel(parent);
 
       parent = parent.parent;
     }

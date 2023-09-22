@@ -23,13 +23,13 @@ import {
   setCompactDefaultOptions,
 } from './utils/compact';
 import {
-  collapse,
   collapseCompact,
   expandCompact,
   toggleLevel,
   expandNodesWithExpandedFlag,
   getNodeChildren,
   setExpandedFlag,
+  collapseInitiallyExpanded,
 } from './utils/children';
 import { downloadImage, toDataURL } from './utils/image';
 import { renderOrUpdateNodes, restyleForeignObjectElements } from './render/nodes';
@@ -405,7 +405,16 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     renderOrUpdateConnections(attrs, connectionsSelection, node);
   }
 
-  private onNodeClick(_: MouseEvent, node: D3Node<TData>) {
+  getNodeFromState(id: string | undefined) {
+    return this.allNodes.find((entry) => entry.id === id);
+  }
+
+  private onNodeClick(_: MouseEvent, d: D3Node<TData>) {
+    const node = this.getNodeFromState(d.id);
+    if (!node) {
+      return;
+    }
+
     const { data } = node;
 
     if (data._type === 'group-toggle' && node.parent) {
@@ -423,28 +432,38 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   private onButtonClick(e: MouseEvent, d: D3Node<TData>) {
     const options = this.getOptions();
 
-    options.onNodeButtonClick?.(e, d);
+    const node = this.getNodeFromState(d.id);
+    if (!node) {
+      return;
+    }
+
+    options.onNodeButtonClick?.(e, node);
 
     if (e.defaultPrevented) {
       return;
     }
 
     if (options.setActiveNodeCentered) {
-      d.data._centered = true;
-      d.data._centeredWithDescendants = true;
+      node.data._centered = true;
+      node.data._centeredWithDescendants = true;
     }
 
-    toggleLevel(d);
+    toggleLevel(node);
 
-    this.update(d);
+    this.update(node);
   }
 
   private onCompactGroupCollapseButtonClick(e: MouseEvent, d: D3Node<TData>) {
     e.stopPropagation();
 
-    collapseCompact(d);
+    const node = this.getNodeFromState(d.id);
+    if (!node) {
+      return;
+    }
 
-    this.update(d);
+    collapseCompact(node);
+
+    this.update(node);
   }
 
   /**
@@ -475,7 +494,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   /**
    * This function updates nodes state and redraws graph, usually after data change
    */
-  private updateNodesState() {
+  public updateNodesState() {
     this.setLayouts(false);
 
     // Redraw Graphs
@@ -510,7 +529,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       Object.assign(node, { width, height });
     });
 
-    this.root.eachAfter((node) => collapse(node, false));
+    this.root.eachAfter((node) => collapseInitiallyExpanded(node));
 
     if (firstDraw && options.expandLevel !== null) {
       this.expandToLevel(options.expandLevel);
