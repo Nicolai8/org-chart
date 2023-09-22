@@ -95,7 +95,10 @@ export const calculateCompactFlexDimensions = <TData extends OrgChartDataItem = 
         compactChildren[0].firstCompact = true;
 
         if (node.compactNoChildren) {
-          const widthWithPaddings = columnSize + 2 * options.compactNoChildrenMargin;
+          const widthWithPaddings =
+            columnSize +
+            2 * options.compactNoChildrenMargin +
+            (node.data._compactExpanded ? options.compactToggleButtonMargin : 0);
           const heightWithPaddings =
             2 * options.compactNoChildrenMargin +
             d3.sum(
