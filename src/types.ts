@@ -233,7 +233,7 @@ export type OrgChartOptions<TData extends OrgChartDataItem = OrgChartDataItem> =
   nodeHeight: (d: D3Node<TData>) => number;
   // Callback for node click
   onNodeClick: (d: TData) => void;
-  nodeContent: (d: D3Node<TData>, i: number, arr: ArrayLike<HTMLElement>, state: OrgChartOptions<TData>) => string;
+  nodeContent: (d: D3Node<TData>) => string;
   /**
    * You can access and modify actual node DOM element in runtime using this method.
    */

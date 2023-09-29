@@ -32,7 +32,7 @@ import {
   collapseInitiallyExpanded,
 } from './utils/children';
 import { downloadImage, toDataURL } from './utils/image';
-import { renderOrUpdateNodes, restyleForeignObjectElements } from './render/nodes';
+import { renderOrUpdateNodes, restyleAllForeignObjectElements } from './render/nodes';
 import { renderOrUpdateLinks } from './render/links';
 import { renderOrUpdateConnections } from './render/connections';
 
@@ -270,7 +270,6 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       this.onNodeClick.bind(this),
       this.onButtonClick.bind(this),
       this.onCompactGroupCollapseButtonClick.bind(this),
-      this.svg!,
     );
 
     // Store the old positions for transition.
@@ -483,7 +482,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
 
     // Apply new styles to the foreign object element
     if (isEdge()) {
-      restyleForeignObjectElements(this.getOptions(), this.svg!);
+      restyleAllForeignObjectElements(this.getOptions(), this.svg!);
     }
   }
 

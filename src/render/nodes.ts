@@ -13,7 +13,7 @@ const collapseBtn = `<svg viewBox="0 0 18 18" width="18" height="18" xmlns="http
 /**
  * This function basically redraws visible graph, based on nodes state
  */
-export const restyleForeignObjectElements = <TData extends OrgChartDataItem = OrgChartDataItem>(
+export const restyleAllForeignObjectElements = <TData extends OrgChartDataItem = OrgChartDataItem>(
   options: OrgChartOptions<TData>,
   svg: Selection<SVGElement, string, any, any>,
 ) => {
@@ -27,19 +27,17 @@ export const restyleForeignObjectElements = <TData extends OrgChartDataItem = Or
     .selectAll<HTMLElement, D3Node<TData>>('.node-foreign-object-div')
     .style('width', ({ width }: D3Node<TData>) => `${width}px`)
     .style('height', ({ height }: D3Node<TData>) => `${height}px`)
-    .html(function (d, i, arr) {
+    .html(function (d) {
       if (d.data._type === 'group-toggle' && d.parent) {
         return options.compactCollapsedContent(d.parent);
       }
-      return options.nodeContent.bind(null)(d, i, arr, options);
+      return options.nodeContent(d);
     });
 };
 
-const renderAndUpdateForeignObjectElements = <TData extends OrgChartDataItem = OrgChartDataItem>(
-  options: OrgChartOptions<TData>,
+const renderForeignObjectElements = <TData extends OrgChartDataItem = OrgChartDataItem>(
   nodeWrapperGroup: Selection<SVGGraphicsElement, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
   onNodeClick: (e: MouseEvent, d: D3Node<TData>) => void,
-  svg: Selection<SVGElement, string, any, any>,
 ) => {
   // Add foreignObject element inside rectangle
   const fo = nodeWrapperGroup
@@ -64,8 +62,29 @@ const renderAndUpdateForeignObjectElements = <TData extends OrgChartDataItem = O
     selector: 'node-foreign-object-div',
     data: (d) => [d],
   });
+};
 
-  restyleForeignObjectElements(options, svg);
+const updateForeignObjectElements = <TData extends OrgChartDataItem = OrgChartDataItem>(
+  options: OrgChartOptions<TData>,
+  nodeUpdate: Selection<SVGGraphicsElement, FlextreeD3Node<TData>, SVGGraphicsElement, string>,
+) => {
+  nodeUpdate
+    .select('.node-foreign-object')
+    .attr('width', ({ width }) => width)
+    .attr('height', ({ height }) => height)
+    .attr('x', () => 0)
+    .attr('y', () => 0);
+
+  nodeUpdate
+    .select('.node-foreign-object-div')
+    .style('width', ({ width }: D3Node<TData>) => `${width}px`)
+    .style('height', ({ height }: D3Node<TData>) => `${height}px`)
+    .html(function (d) {
+      if (d.data._type === 'group-toggle' && d.parent) {
+        return options.compactCollapsedContent(d.parent);
+      }
+      return options.nodeContent(d);
+    });
 };
 
 const renderNodeButton = <TData extends OrgChartDataItem = OrgChartDataItem>(
@@ -277,7 +296,6 @@ export const renderOrUpdateNodes = <TData extends OrgChartDataItem = OrgChartDat
   onNodeClick: (e: MouseEvent, d: D3Node<TData>) => void,
   onButtonClick: (e: MouseEvent, d: D3Node<TData>) => void,
   onCompactGroupToggleButtonClick: (e: MouseEvent, d: D3Node<TData>) => void,
-  svg: Selection<SVGElement, string, any, any>,
 ) => {
   const { x0, y0, x = 0, y = 0, width, height } = node;
 
@@ -307,7 +325,7 @@ export const renderOrUpdateNodes = <TData extends OrgChartDataItem = OrgChartDat
     data: (d) => [d],
   });
 
-  renderAndUpdateForeignObjectElements(options, nodeWrapperGroup, onNodeClick, svg);
+  renderForeignObjectElements(nodeWrapperGroup, onNodeClick);
 
   renderNodeButton(options, nodeWrapperGroup, onButtonClick);
 
@@ -334,6 +352,8 @@ export const renderOrUpdateNodes = <TData extends OrgChartDataItem = OrgChartDat
     .attr('cursor', 'pointer')
     .attr('rx', 3)
     .attr('fill', 'none');
+
+  updateForeignObjectElements(options, nodeUpdate);
 
   updateNodeCompact(options, nodeUpdate);
 
