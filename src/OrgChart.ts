@@ -72,6 +72,10 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
     return this;
   }
 
+  setData(newData: TData[] | null) {
+    this.options.data = newData;
+  }
+
   render() {
     //InnerFunctions which will update visuals
     const attrs = this.getOptions();
