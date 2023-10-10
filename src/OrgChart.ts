@@ -729,7 +729,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
   /**
    * This function can be invoked via chart.setExpanded API, it expands or collapses particular node
    */
-  setExpanded(id: string, expandedFlag: boolean = true) {
+  setExpanded(id: string, expandedFlag: boolean = true, applyToCompact: boolean = true) {
     // Retrieve node by node Id
     const node = this.allNodes.filter(({ data }) => this.getNodeId(data) === id)[0];
 
@@ -737,7 +737,7 @@ export class OrgChart<TData extends OrgChartDataItem = OrgChartDataItem> {
       console.warn(`${LibName} setExpanded: Node with id (${id}) not found in the tree`);
       return this;
     }
-    setExpandedFlag(node, expandedFlag);
+    setExpandedFlag(node, expandedFlag, applyToCompact);
 
     return this;
   }

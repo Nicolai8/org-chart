@@ -3,6 +3,7 @@ import { D3Node, OrgChartDataItem } from '../types';
 export const setExpandedFlag = <TData extends OrgChartDataItem = OrgChartDataItem>(
   node: D3Node<TData> | null,
   flag: boolean,
+  applyToCompact: boolean = true,
 ) => {
   if (!node) {
     return;
@@ -10,12 +11,12 @@ export const setExpandedFlag = <TData extends OrgChartDataItem = OrgChartDataIte
 
   if (flag) {
     node.data._expanded = true;
-    if (node.compactNoChildren) {
+    if (node.compactNoChildren && applyToCompact) {
       node.data._compactExpanded = true;
     }
   } else {
     node.data._expanded = false;
-    if (node.compactNoChildren) {
+    if (node.compactNoChildren && applyToCompact) {
       node.data._compactExpanded = false;
     }
   }
@@ -98,7 +99,11 @@ const collapse = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Nod
 /**
  * Expands passed node and it's descendants
  */
-export const expand = <TData extends OrgChartDataItem = OrgChartDataItem>(node: D3Node<TData>, setFlags: boolean, expandCompact: boolean = false) => {
+export const expand = <TData extends OrgChartDataItem = OrgChartDataItem>(
+  node: D3Node<TData>,
+  setFlags: boolean,
+  expandCompact: boolean = false,
+) => {
   resetCompactGroupToggle(node);
 
   node.children = node._children;
